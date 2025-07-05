@@ -7,10 +7,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.xptlabs.varliktakibi.presentation.main.MainTabView
+import com.xptlabs.varliktakibi.presentation.onboarding.OnboardingScreen
 import com.xptlabs.varliktakibi.presentation.permissions.PermissionScreen
 import com.xptlabs.varliktakibi.presentation.splash.SplashScreen
 import com.xptlabs.varliktakibi.presentation.splash.SplashViewModel
-import com.xptlabs.varliktakibi.presentation.test.TestIconsScreen
 
 @Composable
 fun AssetTrackerNavHost(
@@ -40,6 +41,16 @@ fun AssetTrackerNavHost(
             )
         }
 
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onOnboardingComplete = {
+                    navController.navigate("permissions") {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable("permissions") {
             PermissionScreen(
                 onPermissionsGranted = {
@@ -55,12 +66,8 @@ fun AssetTrackerNavHost(
             )
         }
 
-        composable(Screen.Onboarding.route) {
-            androidx.compose.material3.Text("Onboarding Screen - Coming Soon!")
-        }
-
         composable(Screen.Main.route) {
-            TestIconsScreen()
+            MainTabView()
         }
     }
 }
