@@ -6,7 +6,6 @@ import androidx.work.Configuration
 import com.google.firebase.FirebaseApp
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.google.firebase.perf.FirebasePerformance
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.managers.AssetTrackerWorkManager
 import dagger.hilt.android.HiltAndroidApp
@@ -35,6 +34,9 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
         // Initialize Firebase
         initializeFirebase()
 
+        // Setup global exception handler
+        setupGlobalExceptionHandler()
+
         // Start background work
         setupBackgroundWork()
 
@@ -46,9 +48,9 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
         // Initialize Firebase
         FirebaseApp.initializeApp(this)
 
-        // Enable/disable analytics collection based on build type
+        // Configure Analytics
         FirebaseAnalytics.getInstance(this).apply {
-            setAnalyticsCollectionEnabled(!BuildConfig.DEBUG || BuildConfig.FIREBASE_DEBUG)
+            setAnalyticsCollectionEnabled(!BuildConfig.DEBUG)
         }
 
         // Configure Crashlytics
@@ -56,11 +58,7 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
             setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)
             setCustomKey("app_version", BuildConfig.VERSION_NAME)
             setCustomKey("build_type", BuildConfig.BUILD_TYPE)
-        }
-
-        // Configure Performance Monitoring
-        FirebasePerformance.getInstance().apply {
-            isPerformanceCollectionEnabled = !BuildConfig.DEBUG
+            setCustomKey("version_code", BuildConfig.VERSION_CODE.toString())
         }
 
         // Set user properties
@@ -71,7 +69,9 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
         analyticsManager.apply {
             setUserProperty("app_version", BuildConfig.VERSION_NAME)
             setUserProperty("build_type", BuildConfig.BUILD_TYPE)
+            setUserProperty("version_code", BuildConfig.VERSION_CODE.toString())
             setUserProperty("debug_build", BuildConfig.DEBUG.toString())
+            setUserProperty("firebase_debug", BuildConfig.FIREBASE_DEBUG.toString())
         }
     }
 
@@ -83,7 +83,6 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
         workManager.startPeriodicCleanup()
     }
 
-    // Global exception handler
     private fun setupGlobalExceptionHandler() {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
 
