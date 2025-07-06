@@ -1,8 +1,6 @@
 package com.xptlabs.varliktakibi.presentation.assets.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -26,13 +23,15 @@ import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.models.AssetType
 import com.xptlabs.varliktakibi.presentation.components.GradientButton
 import java.util.*
+import  com.xptlabs.varliktakibi.managers.MarketDataManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssetFormDialog(
     asset: Asset? = null, // null means adding new asset
     onDismiss: () -> Unit,
-    onSave: (Asset) -> Unit
+    onSave: (Asset) -> Unit,
+    marketDataManager: MarketDataManager
 ) {
     val isEditMode = asset != null
 
@@ -41,7 +40,7 @@ fun AssetFormDialog(
     var showAssetTypeDropdown by remember { mutableStateOf(false) }
 
     // Mock current rates
-    val currentRate = getCurrentRate(selectedAssetType)
+    val currentRate = getCurrentRate(selectedAssetType, marketDataManager)
     val totalValue = calculateTotalValue(amount, currentRate)
 
     val isValidInput = amount.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDoubleOrNull()!! > 0
@@ -112,9 +111,9 @@ fun AssetFormDialog(
                             },
                             leadingIcon = {
                                 Icon(
-                                    imageVector = getAssetIcon(selectedAssetType),
+                                    imageVector = getFormAssetIcon(selectedAssetType),
                                     contentDescription = null,
-                                    tint = getAssetColor(selectedAssetType)
+                                    tint = getFormAssetColor(selectedAssetType)
                                 )
                             },
                             modifier = Modifier
@@ -135,9 +134,9 @@ fun AssetFormDialog(
                                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                                         ) {
                                             Icon(
-                                                imageVector = getAssetIcon(assetType),
+                                                imageVector = getFormAssetIcon(assetType),
                                                 contentDescription = null,
-                                                tint = getAssetColor(assetType),
+                                                tint = getFormAssetColor(assetType),
                                                 modifier = Modifier.size(20.dp)
                                             )
                                             Column {
@@ -311,5 +310,63 @@ fun AssetFormDialog(
                 }
             }
         }
+    }
+}
+
+private fun formatAmountForEditing(amount: Double): String {
+    return if (amount % 1.0 == 0.0) {
+        // Tam sayı ise decimal olmadan göster
+        amount.toInt().toString()
+    } else {
+        // Decimal varsa, gereksiz sıfırları kaldır
+        String.format("%.3f", amount).trimEnd('0').trimEnd('.')
+    }
+}
+
+private fun getCurrentRate(assetType: AssetType, marketDataManager: MarketDataManager): Double {
+    return marketDataManager.getCurrentPrice(assetType)
+}
+
+// Toplam değer hesapla
+private fun calculateTotalValue(amountStr: String, currentRate: Double): Double {
+    val amount = amountStr.replace(",", ".").toDoubleOrNull() ?: 0.0
+    return amount * currentRate
+}
+
+// Asset icon'ı al - form dialog için
+private fun getFormAssetIcon(assetType: AssetType): androidx.compose.ui.graphics.vector.ImageVector {
+    return when (assetType) {
+        AssetType.GOLD,
+        AssetType.GOLD_QUARTER,
+        AssetType.GOLD_HALF,
+        AssetType.GOLD_FULL,
+        AssetType.GOLD_REPUBLIC,
+        AssetType.GOLD_ATA,
+        AssetType.GOLD_RESAT,
+        AssetType.GOLD_HAMIT -> Icons.Default.Star // Altın için yıldız
+
+        AssetType.USD,
+        AssetType.EUR,
+        AssetType.GBP,
+        AssetType.TRY -> Icons.Default.AttachMoney // Döviz için para ikonu
+    }
+}
+
+// Asset rengi al - form dialog için
+private fun getFormAssetColor(assetType: AssetType): androidx.compose.ui.graphics.Color {
+    return when (assetType) {
+        AssetType.GOLD,
+        AssetType.GOLD_QUARTER,
+        AssetType.GOLD_HALF,
+        AssetType.GOLD_FULL,
+        AssetType.GOLD_REPUBLIC,
+        AssetType.GOLD_ATA,
+        AssetType.GOLD_RESAT,
+        AssetType.GOLD_HAMIT -> Color(0xFFFFD700) // Altın rengi
+
+        AssetType.USD -> Color(0xFF4CAF50) // Yeşil
+        AssetType.EUR -> Color(0xFF2196F3) // Mavi
+        AssetType.GBP -> Color(0xFF9C27B0) // Mor
+        AssetType.TRY -> Color(0xFFF44336) // Kırmızı
     }
 }

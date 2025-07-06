@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.repository.AssetRepository
+import com.xptlabs.varliktakibi.managers.MarketDataManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -28,6 +29,8 @@ class AssetsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(AssetsUiState())
     val uiState: StateFlow<AssetsUiState> = _uiState.asStateFlow()
+
+    @Inject lateinit var marketDataManager: MarketDataManager
 
     init {
         observeAssets()
@@ -175,6 +178,12 @@ class AssetsViewModel @Inject constructor(
             profitLoss = profitLoss,
             profitLossPercentage = profitLossPercentage
         )
+    }
+
+    private fun updateAssetPrices() {
+        viewModelScope.launch {
+            marketDataManager.refreshAllData()
+        }
     }
 
     private data class PortfolioData(

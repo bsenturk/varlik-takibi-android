@@ -2,8 +2,10 @@ package com.xptlabs.varliktakibi.di
 
 import com.xptlabs.varliktakibi.data.repository.AssetRepositoryImpl
 import com.xptlabs.varliktakibi.data.repository.OnboardingRepositoryImpl
+import com.xptlabs.varliktakibi.data.repository.RateRepositoryImpl
 import com.xptlabs.varliktakibi.domain.repository.AssetRepository
 import com.xptlabs.varliktakibi.domain.repository.OnboardingRepository
+import com.xptlabs.varliktakibi.domain.repository.RateRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -25,4 +27,10 @@ abstract class RepositoryModule {
     abstract fun bindAssetRepository(
         assetRepositoryImpl: AssetRepositoryImpl
     ): AssetRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRateRepository(
+        rateRepositoryImpl: RateRepositoryImpl
+    ): RateRepository
 }

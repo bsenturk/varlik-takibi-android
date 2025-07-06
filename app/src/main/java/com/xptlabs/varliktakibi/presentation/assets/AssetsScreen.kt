@@ -119,7 +119,8 @@ fun AssetsScreen(
             onSave = { asset ->
                 viewModel.addAsset(asset)
                 showAddAssetDialog = false
-            }
+            },
+            marketDataManager = viewModel.marketDataManager
         )
     }
 }
