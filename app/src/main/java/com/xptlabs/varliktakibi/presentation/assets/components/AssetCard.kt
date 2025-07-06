@@ -104,7 +104,7 @@ fun AssetCard(
                 )
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
                     // Edit Button
                     IconButton(

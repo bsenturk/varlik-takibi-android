@@ -26,6 +26,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.presentation.components.GradientButton
 import com.xptlabs.varliktakibi.presentation.components.IconWithBackground
@@ -45,10 +47,19 @@ fun AssetsScreen(
         viewModel.loadAssets()
     }
 
+    // Error handling
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { error ->
+            // TODO: Show snackbar or error dialog
+            // For now, just clear the error after showing
+            viewModel.clearError()
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Header with total value
+        // Header with total value - only show if user has assets
         if (uiState.assets.isNotEmpty()) {
             TotalValueHeader(
                 totalValue = uiState.totalPortfolioValue,
@@ -64,26 +75,40 @@ fun AssetsScreen(
         Box(
             modifier = Modifier.fillMaxSize()
         ) {
-            if (uiState.assets.isEmpty() && !uiState.isLoading) {
-                EmptyStateView(
-                    onAddAssetClick = { showAddAssetDialog = true }
-                )
-            } else {
-                AssetListView(
-                    assets = uiState.assets,
-                    isLoading = uiState.isLoading,
-                    onEditAsset = { asset ->
-                        // Navigate to edit
-                    },
-                    onDeleteAsset = { asset ->
-                        viewModel.deleteAsset(asset)
-                    }
-                )
+            when {
+                // İlk yükleme sırasında loading göster
+                uiState.isLoading && !uiState.hasDataLoaded -> {
+                    LoadingStateView()
+                }
+
+                // Veri yüklenmiş ama varlık yok - Empty State
+                uiState.hasDataLoaded && uiState.assets.isEmpty() -> {
+                    EmptyStateView(
+                        onAddAssetClick = { showAddAssetDialog = true }
+                    )
+                }
+
+                // Varlıklar var - Liste göster
+                else -> {
+                    AssetListView(
+                        assets = uiState.assets,
+                        isRefreshing = uiState.isRefreshing,
+                        onEditAsset = { asset ->
+                            // Navigate to edit - TODO: implement
+                        },
+                        onDeleteAsset = { asset ->
+                            viewModel.deleteAsset(asset)
+                        },
+                        onRefresh = {
+                            viewModel.refreshData()
+                        }
+                    )
+                }
             }
 
-            // Floating Action Button
+            // Floating Action Button - only show if data is loaded
             this@Column.AnimatedVisibility(
-                visible = uiState.assets.isNotEmpty(),
+                visible = uiState.hasDataLoaded && !uiState.assets.isEmpty(),
                 enter = slideInVertically(
                     initialOffsetY = { it },
                     animationSpec = tween(300)
@@ -100,7 +125,8 @@ fun AssetsScreen(
                         .padding(16.dp)
                         .size(56.dp),
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = Color.White
+                    contentColor = Color.White,
+                    shape = CircleShape
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -122,6 +148,36 @@ fun AssetsScreen(
             },
             marketDataManager = viewModel.marketDataManager
         )
+    }
+}
+
+@Composable
+private fun LoadingStateView() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = "Güncel kurlar yükleniyor...",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "Altın ve döviz kurları getiriliyor",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
@@ -279,47 +335,42 @@ private fun EmptyStateView(
 @Composable
 private fun AssetListView(
     assets: List<Asset>,
-    isLoading: Boolean,
+    isRefreshing: Boolean,
     onEditAsset: (Asset) -> Unit,
-    onDeleteAsset: (Asset) -> Unit
+    onDeleteAsset: (Asset) -> Unit,
+    onRefresh: () -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing)
+
+    SwipeRefresh(
+        state = swipeRefreshState,
+        onRefresh = onRefresh
     ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Varlıklarım",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    text = "${assets.size} varlık",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        if (isLoading) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             item {
-                Box(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.padding(32.dp)
+                    Text(
+                        text = "Varlıklarım",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "${assets.size} varlık",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-        } else {
+
             items(
                 items = assets,
                 key = { it.id }
@@ -330,11 +381,11 @@ private fun AssetListView(
                     onDelete = { onDeleteAsset(asset) }
                 )
             }
-        }
 
-        // Extra space for FAB
-        item {
-            Spacer(modifier = Modifier.height(80.dp))
+            // Extra space for FAB
+            item {
+                Spacer(modifier = Modifier.height(80.dp))
+            }
         }
     }
 }

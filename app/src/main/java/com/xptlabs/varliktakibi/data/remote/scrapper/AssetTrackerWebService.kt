@@ -14,7 +14,7 @@ interface AssetTrackerWebService {
         "Connection: keep-alive",
         "Upgrade-Insecure-Requests: 1"
     )
-    @GET("/")
+    @GET("https://altin.doviz.com")
     suspend fun getGoldRates(): Response<String>
 
     @Headers(
@@ -25,6 +25,6 @@ interface AssetTrackerWebService {
         "Connection: keep-alive",
         "Upgrade-Insecure-Requests: 1"
     )
-    @GET("/")
+    @GET("https://kur.doviz.com")
     suspend fun getCurrencyRates(): Response<String>
 }

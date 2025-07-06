@@ -14,31 +14,46 @@ class AssetTrackerHtmlParser @Inject constructor() {
             val doc: Document = Jsoup.parse(html)
             val rates = mutableListOf<RateDto>()
 
-            // Altın tablosunu bul - multiple selector strategy
-            val rows = doc.select("table.data-table tbody tr, table tr, .market-data tr")
+            // Farklı selector'ları dene
+            val possibleSelectors = listOf(
+                "table tbody tr",
+                ".data-table tbody tr",
+                ".market-data tr",
+                "tr"
+            )
 
-            for (row in rows) {
-                val cells = row.select("td")
-                if (cells.size >= 3) {
-                    val name = cells[0].text().trim()
+            var rows: org.jsoup.select.Elements? = null
+            for (selector in possibleSelectors) {
+                rows = doc.select(selector)
+                if (rows.size > 0) break
+            }
 
-                    if (isGoldName(name)) {
-                        val buyPrice = cells.getOrNull(1)?.text()?.trim() ?: ""
-                        val sellPrice = cells.getOrNull(2)?.text()?.trim() ?: ""
-                        val change = cells.getOrNull(3)?.text()?.trim() ?: ""
-                        val changePercent = cells.getOrNull(4)?.text()?.trim() ?: ""
+            rows?.forEach { row ->
+                try {
+                    val cells = row.select("td")
+                    if (cells.size >= 3) {
+                        val name = cells[0].text().trim()
 
-                        rates.add(
-                            RateDto(
-                                name = name,
-                                code = null,
-                                buyPrice = buyPrice,
-                                sellPrice = sellPrice,
-                                change = change,
-                                changePercent = changePercent
+                        if (isGoldName(name)) {
+                            val buyPrice = cells.getOrNull(1)?.text()?.trim() ?: ""
+                            val sellPrice = cells.getOrNull(2)?.text()?.trim() ?: ""
+                            val change = cells.getOrNull(3)?.text()?.trim() ?: ""
+                            val changePercent = cells.getOrNull(4)?.text()?.trim() ?: ""
+
+                            rates.add(
+                                RateDto(
+                                    name = name,
+                                    code = null,
+                                    buyPrice = buyPrice,
+                                    sellPrice = sellPrice,
+                                    change = change,
+                                    changePercent = changePercent
+                                )
                             )
-                        )
+                        }
                     }
+                } catch (e: Exception) {
+                    // Bu satırı atla, devam et
                 }
             }
 
@@ -53,31 +68,46 @@ class AssetTrackerHtmlParser @Inject constructor() {
             val doc: Document = Jsoup.parse(html)
             val rates = mutableListOf<RateDto>()
 
-            // Döviz tablosunu bul
-            val rows = doc.select("table.data-table tbody tr, table tr, .market-data tr")
+            // Farklı selector'ları dene
+            val possibleSelectors = listOf(
+                "table tbody tr",
+                ".data-table tbody tr",
+                ".market-data tr",
+                "tr"
+            )
 
-            for (row in rows) {
-                val cells = row.select("td")
-                if (cells.size >= 3) {
-                    val name = cells[0].text().trim()
+            var rows: org.jsoup.select.Elements? = null
+            for (selector in possibleSelectors) {
+                rows = doc.select(selector)
+                if (rows.size > 0) break
+            }
 
-                    if (isCurrencyName(name)) {
-                        val buyPrice = cells.getOrNull(1)?.text()?.trim() ?: ""
-                        val sellPrice = cells.getOrNull(2)?.text()?.trim() ?: ""
-                        val change = cells.getOrNull(3)?.text()?.trim() ?: ""
-                        val changePercent = cells.getOrNull(4)?.text()?.trim() ?: ""
+            rows?.forEach { row ->
+                try {
+                    val cells = row.select("td")
+                    if (cells.size >= 3) {
+                        val name = cells[0].text().trim()
 
-                        rates.add(
-                            RateDto(
-                                name = name,
-                                code = extractCurrencyCode(name),
-                                buyPrice = buyPrice,
-                                sellPrice = sellPrice,
-                                change = change,
-                                changePercent = changePercent
+                        if (isCurrencyName(name)) {
+                            val buyPrice = cells.getOrNull(1)?.text()?.trim() ?: ""
+                            val sellPrice = cells.getOrNull(2)?.text()?.trim() ?: ""
+                            val change = cells.getOrNull(3)?.text()?.trim() ?: ""
+                            val changePercent = cells.getOrNull(4)?.text()?.trim() ?: ""
+
+                            rates.add(
+                                RateDto(
+                                    name = name,
+                                    code = extractCurrencyCode(name),
+                                    buyPrice = buyPrice,
+                                    sellPrice = sellPrice,
+                                    change = change,
+                                    changePercent = changePercent
+                                )
                             )
-                        )
+                        }
                     }
+                } catch (e: Exception) {
+                    // Bu satırı atla, devam et
                 }
             }
 
@@ -91,14 +121,14 @@ class AssetTrackerHtmlParser @Inject constructor() {
         val goldKeywords = listOf(
             "gram altın", "çeyrek altın", "yarım altın", "tam altın",
             "cumhuriyet altını", "ata altın", "beşli altın",
-            "hamit altın", "reşat altın"
+            "hamit altın", "reşat altın", "gram", "çeyrek", "yarım"
         )
         val lowerName = name.lowercase()
         return goldKeywords.any { lowerName.contains(it) }
     }
 
     private fun isCurrencyName(name: String): Boolean {
-        val currencyKeywords = listOf("USD", "EUR", "GBP", "DOLAR", "EURO", "STERLİN")
+        val currencyKeywords = listOf("USD", "EUR", "GBP", "DOLAR", "EURO", "STERLİN", "POUND")
         val upperName = name.uppercase()
         return currencyKeywords.any { upperName.contains(it) }
     }
@@ -108,7 +138,7 @@ class AssetTrackerHtmlParser @Inject constructor() {
         return when {
             upperName.contains("USD") || upperName.contains("DOLAR") -> "USD"
             upperName.contains("EUR") || upperName.contains("EURO") -> "EUR"
-            upperName.contains("GBP") || upperName.contains("STERLİN") -> "GBP"
+            upperName.contains("GBP") || upperName.contains("STERLİN") || upperName.contains("POUND") -> "GBP"
             else -> "TRY"
         }
     }

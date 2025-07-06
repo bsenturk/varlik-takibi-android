@@ -108,8 +108,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     // Permissions
-    implementation(libs.accompanist.permissions)
-    implementation(libs.accompanist.systemuicontroller)
+    implementation(libs.bundles.accompanist)
 
     // WorkManager
     implementation(libs.bundles.workmanager)

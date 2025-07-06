@@ -79,6 +79,7 @@ kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 # Permissions
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
 accompanist-systemuicontroller = { group = "com.google.accompanist", name = "accompanist-systemuicontroller", version.ref = "accompanist" }
+accompanist-swiperefresh = { group = "com.google.accompanist", name = "accompanist-swiperefresh", version.ref = "accompanist" }
 
 # Testing
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -126,6 +127,12 @@ workmanager = [
 firebase-core = [
     "firebase-analytics",
     "firebase-crashlytics"
+]
+
+accompanist = [
+    "accompanist-permissions",
+    "accompanist-systemuicontroller",
+    "accompanist-swiperefresh"
 ]
 
 [plugins]
