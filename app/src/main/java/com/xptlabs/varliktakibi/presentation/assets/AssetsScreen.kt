@@ -29,6 +29,8 @@ import androidx.navigation.NavController
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.presentation.components.GradientButton
 import com.xptlabs.varliktakibi.presentation.components.IconWithBackground
+import com.xptlabs.varliktakibi.presentation.assets.components.AssetFormDialog
+import com.xptlabs.varliktakibi.presentation.assets.components.AssetCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +82,7 @@ fun AssetsScreen(
             }
 
             // Floating Action Button
-            AnimatedVisibility(
+            this@Column.AnimatedVisibility(
                 visible = uiState.assets.isNotEmpty(),
                 enter = slideInVertically(
                     initialOffsetY = { it },
