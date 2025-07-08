@@ -11,6 +11,7 @@ interface AssetRepository {
     suspend fun updateAsset(asset: Asset)
     suspend fun deleteAsset(asset: Asset)
     suspend fun deleteAssetById(id: String)
+    suspend fun deleteAllAssets()
     suspend fun getTotalPortfolioValue(): Double
     suspend fun getAssetCount(): Int
 }

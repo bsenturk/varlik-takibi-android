@@ -45,6 +45,10 @@ class AssetRepositoryImpl @Inject constructor(
         assetDao.deleteAssetById(id)
     }
 
+    override suspend fun deleteAllAssets() {
+        assetDao.deleteAllAssets()
+    }
+
     override suspend fun getTotalPortfolioValue(): Double {
         return assetDao.getTotalPortfolioValue() ?: 0.0
     }
