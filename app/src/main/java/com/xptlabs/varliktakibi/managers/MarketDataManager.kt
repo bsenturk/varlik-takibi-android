@@ -146,7 +146,8 @@ class MarketDataManager @Inject constructor(
                 sellPrice = 1.0,
                 change = 0.0,
                 changePercent = 0.0,
-                lastUpdated = Date()
+                lastUpdated = Date(),
+                isChangePercentPositive = true
             )
             else -> return null
         }

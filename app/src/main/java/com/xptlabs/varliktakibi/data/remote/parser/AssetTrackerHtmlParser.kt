@@ -49,9 +49,10 @@ class AssetTrackerHtmlParser @Inject constructor() {
                                 type = "GOLD",
                                 buyPrice = buyPrice.parsePrice(),
                                 sellPrice = sellPrice.parsePrice(),
-                                change = change.parseChange(),
+                                change = change.parseChangePercent(),
                                 changePercent = changePercent.parseChangePercent(),
-                                lastUpdated = Date()
+                                lastUpdated = Date(),
+                                isChangePercentPositive = change.isChangePercentPositive()
                             )
 
                             // Sadece geçerli fiyatları ekle
@@ -108,9 +109,10 @@ class AssetTrackerHtmlParser @Inject constructor() {
                                 type = "CURRENCY",
                                 buyPrice = buyPrice.parsePrice(),
                                 sellPrice = sellPrice.parsePrice(),
-                                change = change.parseChange(),
+                                change = change.parseChangePercent(),
                                 changePercent = changePercent.parseChangePercent(),
-                                lastUpdated = Date()
+                                lastUpdated = Date(),
+                                isChangePercentPositive = change.isChangePercentPositive()
                             )
 
                             // Sadece geçerli fiyatları ekle
@@ -202,8 +204,14 @@ class AssetTrackerHtmlParser @Inject constructor() {
     private fun String.parseChangePercent(): Double {
         return this.replace("%", "")
             .replace("+", "")
+            .replace("-", "")
             .replace(" ", "")
+            .replace(",", ".")
             .trim()
             .toDoubleOrNull() ?: 0.0
+    }
+
+    private fun String.isChangePercentPositive(): Boolean {
+        return !this.contains("-")
     }
 }

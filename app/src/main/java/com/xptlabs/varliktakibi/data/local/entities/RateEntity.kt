@@ -14,5 +14,6 @@ data class RateEntity(
     val sellPrice: Double,
     val change: Double,
     val changePercent: Double,
-    val lastUpdated: Date
+    val lastUpdated: Date,
+    val isChangePercentPositive: Boolean
 )
