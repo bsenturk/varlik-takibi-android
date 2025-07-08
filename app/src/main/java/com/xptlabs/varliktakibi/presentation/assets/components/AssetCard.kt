@@ -104,16 +104,16 @@ fun AssetCard(
                 )
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(20.dp)
+                    horizontalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
                     // Edit Button
                     IconButton(
                         onClick = onEdit,
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(28.dp)
                             .background(
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                CircleShape
+                                RoundedCornerShape(8.dp)
                             )
                     ) {
                         Icon(
@@ -128,10 +128,10 @@ fun AssetCard(
                     IconButton(
                         onClick = { showDeleteDialog = true },
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(28.dp)
                             .background(
                                 MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
-                                CircleShape
+                                RoundedCornerShape(8.dp)
                             )
                     ) {
                         Icon(
@@ -196,12 +196,12 @@ fun getAssetIcon(assetType: AssetType): ImageVector {
         AssetType.GOLD_REPUBLIC,
         AssetType.GOLD_ATA,
         AssetType.GOLD_RESAT,
-        AssetType.GOLD_HAMIT -> Icons.Default.MonetizationOn
+        AssetType.GOLD_HAMIT -> Icons.Default.Hive
 
-        AssetType.USD -> Icons.Default.AttachMoney
         AssetType.EUR -> Icons.Default.Euro
         AssetType.GBP -> Icons.Default.CurrencyPound
         AssetType.TRY -> Icons.Default.CurrencyLira
+        AssetType.USD -> Icons.Default.AttachMoney
     }
 }
 

@@ -1,6 +1,5 @@
 package com.xptlabs.varliktakibi.presentation.assets.components
 
-
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,8 +21,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.models.AssetType
 import com.xptlabs.varliktakibi.presentation.components.GradientButton
+import com.xptlabs.varliktakibi.managers.MarketDataManager
 import java.util.*
-import  com.xptlabs.varliktakibi.managers.MarketDataManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +38,7 @@ fun AssetFormDialog(
     var amount by remember { mutableStateOf(asset?.amount?.let { formatAmountForEditing(it) } ?: "") }
     var showAssetTypeDropdown by remember { mutableStateOf(false) }
 
-    // Mock current rates
+    // Güncel kur ve toplam değer hesaplama
     val currentRate = getCurrentRate(selectedAssetType, marketDataManager)
     val totalValue = calculateTotalValue(amount, currentRate)
 
@@ -313,6 +312,7 @@ fun AssetFormDialog(
     }
 }
 
+// Helper functions
 private fun formatAmountForEditing(amount: Double): String {
     return if (amount % 1.0 == 0.0) {
         // Tam sayı ise decimal olmadan göster
@@ -343,12 +343,12 @@ private fun getFormAssetIcon(assetType: AssetType): androidx.compose.ui.graphics
         AssetType.GOLD_REPUBLIC,
         AssetType.GOLD_ATA,
         AssetType.GOLD_RESAT,
-        AssetType.GOLD_HAMIT -> Icons.Default.Star // Altın için yıldız
+        AssetType.GOLD_HAMIT -> Icons.Default.Hive
 
-        AssetType.USD,
-        AssetType.EUR,
-        AssetType.GBP,
-        AssetType.TRY -> Icons.Default.AttachMoney // Döviz için para ikonu
+        AssetType.USD -> Icons.Default.AttachMoney
+        AssetType.EUR -> Icons.Default.Euro
+        AssetType.GBP -> Icons.Default.CurrencyPound
+        AssetType.TRY -> Icons.Default.CurrencyLira
     }
 }
 

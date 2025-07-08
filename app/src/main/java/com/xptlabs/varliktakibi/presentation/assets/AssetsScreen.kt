@@ -42,6 +42,7 @@ fun AssetsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddAssetDialog by remember { mutableStateOf(false) }
+    var editingAsset by remember { mutableStateOf<Asset?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.loadAssets()
@@ -94,7 +95,7 @@ fun AssetsScreen(
                         assets = uiState.assets,
                         isRefreshing = uiState.isRefreshing,
                         onEditAsset = { asset ->
-                            // Navigate to edit - TODO: implement
+                            editingAsset = asset
                         },
                         onDeleteAsset = { asset ->
                             viewModel.deleteAsset(asset)
@@ -138,13 +139,22 @@ fun AssetsScreen(
         }
     }
 
-    // Add Asset Dialog
-    if (showAddAssetDialog) {
+    // Add/Edit Asset Dialog
+    if (showAddAssetDialog || editingAsset != null) {
         AssetFormDialog(
-            onDismiss = { showAddAssetDialog = false },
-            onSave = { asset ->
-                viewModel.addAsset(asset)
+            asset = editingAsset,
+            onDismiss = {
                 showAddAssetDialog = false
+                editingAsset = null
+            },
+            onSave = { asset ->
+                if (editingAsset != null) {
+                    viewModel.updateAsset(asset)
+                } else {
+                    viewModel.addOrUpdateAsset(asset)
+                }
+                showAddAssetDialog = false
+                editingAsset = null
             },
             marketDataManager = viewModel.marketDataManager
         )

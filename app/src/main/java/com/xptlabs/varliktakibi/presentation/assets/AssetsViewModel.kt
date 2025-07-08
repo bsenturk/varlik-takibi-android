@@ -178,6 +178,58 @@ class AssetsViewModel @Inject constructor(
         }
     }
 
+    fun addOrUpdateAsset(newAsset: Asset) {
+        viewModelScope.launch {
+            try {
+                Log.d(TAG, "Adding or updating asset: ${newAsset.name} - ${newAsset.type}")
+
+                // Aynı türden varlık var mı kontrol et
+                val existingAssets = assetRepository.getAllAssets().first()
+                val existingAsset = existingAssets.find { it.type == newAsset.type }
+
+                if (existingAsset != null) {
+                    // Mevcut varlık varsa, miktarı topla
+                    val updatedAsset = existingAsset.copy(
+                        amount = existingAsset.amount + newAsset.amount,
+                        currentPrice = newAsset.currentPrice, // Güncel fiyatı güncelle
+                        lastUpdated = newAsset.lastUpdated
+                    )
+
+                    Log.d(TAG, "Updating existing asset: ${existingAsset.amount} + ${newAsset.amount} = ${updatedAsset.amount}")
+                    assetRepository.updateAsset(updatedAsset)
+
+                    // Analytics
+                    analyticsManager.logAssetUpdated(
+                        assetType = updatedAsset.type.name,
+                        oldAmount = existingAsset.amount,
+                        newAmount = updatedAsset.amount
+                    )
+                } else {
+                    // Yeni varlık ekle
+                    Log.d(TAG, "Adding new asset: ${newAsset.name}")
+                    assetRepository.insertAsset(newAsset)
+
+                    // Analytics
+                    analyticsManager.logAssetAdded(
+                        assetType = newAsset.type.name,
+                        amount = newAsset.amount
+                    )
+                }
+
+            } catch (exception: Exception) {
+                Log.e(TAG, "Error adding/updating asset", exception)
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Varlık eklenirken hata oluştu: ${exception.message}"
+                )
+
+                analyticsManager.logError(
+                    errorType = "asset_add_update_failed",
+                    errorMessage = exception.message ?: "Unknown error"
+                )
+            }
+        }
+    }
+
     fun updateAsset(asset: Asset) {
         viewModelScope.launch {
             try {

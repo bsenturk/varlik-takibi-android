@@ -1,8 +1,8 @@
 package com.xptlabs.varliktakibi.managers
 
 import android.util.Log
+import com.xptlabs.varliktakibi.data.local.entities.RateEntity
 import com.xptlabs.varliktakibi.domain.models.AssetType
-import com.xptlabs.varliktakibi.domain.models.Rate
 import com.xptlabs.varliktakibi.domain.repository.RateRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,11 +23,11 @@ class MarketDataManager @Inject constructor(
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val _goldPrices = MutableStateFlow<List<Rate>>(emptyList())
-    val goldPrices: StateFlow<List<Rate>> = _goldPrices.asStateFlow()
+    private val _goldRates = MutableStateFlow<List<RateEntity>>(emptyList())
+    val goldRates: StateFlow<List<RateEntity>> = _goldRates.asStateFlow()
 
-    private val _currencyRates = MutableStateFlow<List<Rate>>(emptyList())
-    val currencyRates: StateFlow<List<Rate>> = _currencyRates.asStateFlow()
+    private val _currencyRates = MutableStateFlow<List<RateEntity>>(emptyList())
+    val currencyRates: StateFlow<List<RateEntity>> = _currencyRates.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -50,16 +50,16 @@ class MarketDataManager @Inject constructor(
     private fun setupBindings() {
         // Repository'den gold rates'i dinle
         scope.launch {
-            rateRepository.getLastGoldRates().collect { rates ->
-                Log.d(TAG, "Received ${rates.size} gold rates")
-                _goldPrices.value = rates
+            rateRepository.getGoldRates().collect { rates ->
+                Log.d(TAG, "Received ${rates.size} gold rates from database")
+                _goldRates.value = rates
             }
         }
 
         // Repository'den currency rates'i dinle
         scope.launch {
-            rateRepository.getLastCurrencyRates().collect { rates ->
-                Log.d(TAG, "Received ${rates.size} currency rates")
+            rateRepository.getCurrencyRates().collect { rates ->
+                Log.d(TAG, "Received ${rates.size} currency rates from database")
                 _currencyRates.value = rates
             }
         }
@@ -92,7 +92,7 @@ class MarketDataManager @Inject constructor(
     fun getCurrentPrice(assetType: AssetType): Double {
         return when {
             isGoldAsset(assetType) -> {
-                val rate = getGoldPrice(assetType)
+                val rate = getGoldRate(assetType)
                 val price = rate?.sellPrice ?: getDefaultPrice(assetType)
                 Log.d(TAG, "Gold price for $assetType: $price")
                 price
@@ -111,63 +111,47 @@ class MarketDataManager @Inject constructor(
         }
     }
 
-    fun getGoldPrice(assetType: AssetType): Rate? {
-        val goldRates = _goldPrices.value
-        Log.d(TAG, "Looking for gold price in ${goldRates.size} rates for $assetType")
+    private fun getGoldRate(assetType: AssetType): RateEntity? {
+        val goldRates = _goldRates.value
+        Log.d(TAG, "Looking for gold rate in ${goldRates.size} rates for $assetType")
 
-        return when (assetType) {
-            AssetType.GOLD -> goldRates.firstOrNull {
-                it.name.lowercase().contains("gram")
-            }
-            AssetType.GOLD_QUARTER -> goldRates.firstOrNull {
-                it.name.lowercase().contains("çeyrek")
-            }
-            AssetType.GOLD_HALF -> goldRates.firstOrNull {
-                it.name.lowercase().contains("yarım")
-            }
-            AssetType.GOLD_FULL -> goldRates.firstOrNull {
-                it.name.lowercase().contains("tam")
-            }
-            AssetType.GOLD_REPUBLIC -> goldRates.firstOrNull {
-                it.name.lowercase().contains("cumhuriyet")
-            }
-            AssetType.GOLD_ATA -> goldRates.firstOrNull {
-                it.name.lowercase().contains("ata")
-            }
-            AssetType.GOLD_RESAT -> goldRates.firstOrNull {
-                it.name.lowercase().contains("reşat")
-            }
-            AssetType.GOLD_HAMIT -> goldRates.firstOrNull {
-                it.name.lowercase().contains("hamit")
-            }
-            else -> null
+        val goldId = when (assetType) {
+            AssetType.GOLD -> "GOLD_GRAM"
+            AssetType.GOLD_QUARTER -> "GOLD_QUARTER"
+            AssetType.GOLD_HALF -> "GOLD_HALF"
+            AssetType.GOLD_FULL -> "GOLD_FULL"
+            AssetType.GOLD_REPUBLIC -> "GOLD_REPUBLIC"
+            AssetType.GOLD_ATA -> "GOLD_ATA"
+            AssetType.GOLD_RESAT -> "GOLD_RESAT"
+            AssetType.GOLD_HAMIT -> "GOLD_HAMIT"
+            else -> return null
         }
+
+        return goldRates.firstOrNull { it.id == goldId }
     }
 
-    fun getCurrencyRate(assetType: AssetType): Rate? {
+    private fun getCurrencyRate(assetType: AssetType): RateEntity? {
         val currencyRates = _currencyRates.value
         Log.d(TAG, "Looking for currency rate in ${currencyRates.size} rates for $assetType")
 
-        return when (assetType) {
-            AssetType.USD -> currencyRates.firstOrNull {
-                it.code?.uppercase() == "USD"
-            }
-            AssetType.EUR -> currencyRates.firstOrNull {
-                it.code?.uppercase() == "EUR"
-            }
-            AssetType.GBP -> currencyRates.firstOrNull {
-                it.code?.uppercase() == "GBP"
-            }
-            AssetType.TRY -> Rate(
+        val currencyId = when (assetType) {
+            AssetType.USD -> "USD"
+            AssetType.EUR -> "EUR"
+            AssetType.GBP -> "GBP"
+            AssetType.TRY -> return RateEntity(
+                id = "TRY",
                 name = "Türk Lirası",
-                code = "TRY",
+                type = "CURRENCY",
                 buyPrice = 1.0,
                 sellPrice = 1.0,
                 change = 0.0,
-                changePercent = 0.0
+                changePercent = 0.0,
+                lastUpdated = Date()
             )
-            else -> null
+            else -> return null
         }
+
+        return currencyRates.firstOrNull { it.id == currencyId }
     }
 
     // Asset türü kontrolü
@@ -206,5 +190,14 @@ class MarketDataManager @Inject constructor(
 
     fun clearError() {
         _errorMessage.value = null
+    }
+
+    // Güncel kur bilgisi için
+    fun getCurrentRate(assetType: AssetType): RateEntity? {
+        return when {
+            isGoldAsset(assetType) -> getGoldRate(assetType)
+            isCurrencyAsset(assetType) -> getCurrencyRate(assetType)
+            else -> null
+        }
     }
 }

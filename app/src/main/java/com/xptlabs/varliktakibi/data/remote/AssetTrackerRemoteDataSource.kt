@@ -1,6 +1,7 @@
 package com.xptlabs.varliktakibi.data.remote
 
-import com.xptlabs.varliktakibi.data.remote.dto.RateDto
+import android.util.Log
+import com.xptlabs.varliktakibi.data.local.entities.RateEntity
 import com.xptlabs.varliktakibi.data.remote.parser.AssetTrackerHtmlParser
 import com.xptlabs.varliktakibi.data.remote.scraper.AssetTrackerWebService
 import kotlinx.coroutines.Dispatchers
@@ -15,30 +16,46 @@ class AssetTrackerRemoteDataSource @Inject constructor(
     private val htmlParser: AssetTrackerHtmlParser
 ) {
 
-    suspend fun getGoldRates(): Result<List<RateDto>> = withContext(Dispatchers.IO) {
+    companion object {
+        private const val TAG = "RemoteDataSource"
+    }
+
+    suspend fun getGoldRates(): Result<List<RateEntity>> = withContext(Dispatchers.IO) {
         try {
+            Log.d(TAG, "Fetching gold rates from https://altin.doviz.com")
             val response = goldWebService.getGoldRates()
             if (response.isSuccessful && response.body() != null) {
+                Log.d(TAG, "Successfully fetched gold rates HTML, parsing...")
                 val rates = htmlParser.parseGoldRates(response.body()!!)
+                Log.d(TAG, "Parsed ${rates.size} gold rates")
                 Result.success(rates)
             } else {
-                Result.failure(Exception("Failed to fetch gold rates: ${response.code()}"))
+                val error = "Failed to fetch gold rates: ${response.code()}"
+                Log.e(TAG, error)
+                Result.failure(Exception(error))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Exception while fetching gold rates", e)
             Result.failure(e)
         }
     }
 
-    suspend fun getCurrencyRates(): Result<List<RateDto>> = withContext(Dispatchers.IO) {
+    suspend fun getCurrencyRates(): Result<List<RateEntity>> = withContext(Dispatchers.IO) {
         try {
+            Log.d(TAG, "Fetching currency rates from https://kur.doviz.com")
             val response = currencyWebService.getCurrencyRates()
             if (response.isSuccessful && response.body() != null) {
+                Log.d(TAG, "Successfully fetched currency rates HTML, parsing...")
                 val rates = htmlParser.parseCurrencyRates(response.body()!!)
+                Log.d(TAG, "Parsed ${rates.size} currency rates")
                 Result.success(rates)
             } else {
-                Result.failure(Exception("Failed to fetch currency rates: ${response.code()}"))
+                val error = "Failed to fetch currency rates: ${response.code()}"
+                Log.e(TAG, error)
+                Result.failure(Exception(error))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Exception while fetching currency rates", e)
             Result.failure(e)
         }
     }

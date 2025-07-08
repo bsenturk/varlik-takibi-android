@@ -3,6 +3,7 @@ package com.xptlabs.varliktakibi.presentation.splash
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.domain.repository.OnboardingRepository
+import com.xptlabs.varliktakibi.managers.MarketDataManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SplashViewModel @Inject constructor(
-    private val onboardingRepository: OnboardingRepository
+    private val onboardingRepository: OnboardingRepository,
+    private val marketDataManager: MarketDataManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SplashUiState())
@@ -22,6 +24,10 @@ class SplashViewModel @Inject constructor(
 
     init {
         checkOnboardingStatus()
+    }
+
+    private fun getGoldAndCurrencyRates() {
+
     }
 
     private fun checkOnboardingStatus() {

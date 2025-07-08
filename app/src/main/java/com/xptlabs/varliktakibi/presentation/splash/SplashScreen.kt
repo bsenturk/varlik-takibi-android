@@ -62,7 +62,6 @@ fun SplashScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // App Logo/Icon placeholder
             Box(
                 modifier = Modifier
                     .size(80.dp)
@@ -85,7 +84,7 @@ fun SplashScreen(
             )
 
             Text(
-                text = "Loading...",
+                text = "Yükleniyor...",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
             )

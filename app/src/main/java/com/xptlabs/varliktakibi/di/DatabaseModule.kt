@@ -3,6 +3,7 @@ package com.xptlabs.varliktakibi.di
 import android.content.Context
 import androidx.room.Room
 import com.xptlabs.varliktakibi.data.local.dao.AssetDao
+import com.xptlabs.varliktakibi.data.local.dao.RateDao
 import com.xptlabs.varliktakibi.data.local.database.AssetTrackerDatabase
 import dagger.Module
 import dagger.Provides
@@ -32,5 +33,10 @@ object DatabaseModule {
     @Provides
     fun provideAssetDao(database: AssetTrackerDatabase): AssetDao {
         return database.assetDao()
+    }
+
+    @Provides
+    fun provideRateDao(database: AssetTrackerDatabase): RateDao {
+        return database.rateDao()
     }
 }

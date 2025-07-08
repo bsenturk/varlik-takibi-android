@@ -23,7 +23,7 @@ object NetworkModule {
     @Singleton
     fun provideHttpLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
+            level = HttpLoggingInterceptor.Level.HEADERS // Sadece header'ları logla
         }
     }
 
@@ -38,6 +38,14 @@ object NetworkModule {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
+            // ÖNEMLI: Bu otomatik decompression sağlar
+            .addNetworkInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    // Accept-Encoding header'ını kaldır, OkHttp kendi yönetsin
+                    .removeHeader("Accept-Encoding")
+                    .build()
+                chain.proceed(request)
+            }
             .build()
     }
 
