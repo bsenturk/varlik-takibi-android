@@ -33,6 +33,9 @@ import com.xptlabs.varliktakibi.presentation.components.GradientButton
 import com.xptlabs.varliktakibi.presentation.components.IconWithBackground
 import com.xptlabs.varliktakibi.presentation.assets.components.AssetFormDialog
 import com.xptlabs.varliktakibi.presentation.assets.components.AssetCard
+import com.xptlabs.varliktakibi.presentation.navigation.Screen
+import com.xptlabs.varliktakibi.BuildConfig
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,6 +63,11 @@ fun AssetsScreen(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
+        // Debug section only in debug builds
+        if (BuildConfig.DEBUG) {
+            DebugAssetsSection(viewModel = viewModel)
+        }
+
         // Header with total value - only show if user has assets
         if (uiState.assets.isNotEmpty()) {
             TotalValueHeader(
@@ -67,7 +75,7 @@ fun AssetsScreen(
                 profitLoss = uiState.profitLoss,
                 profitLossPercentage = uiState.profitLossPercentage,
                 onAnalyticsClick = {
-                    // Navigate to analytics
+                    navController.navigate(Screen.Analytics.route)
                 }
             )
         }
@@ -109,7 +117,7 @@ fun AssetsScreen(
 
             // Floating Action Button - only show if data is loaded
             this@Column.AnimatedVisibility(
-                visible = uiState.hasDataLoaded && !uiState.assets.isEmpty(),
+                visible = uiState.hasDataLoaded && uiState.assets.isNotEmpty(),
                 enter = slideInVertically(
                     initialOffsetY = { it },
                     animationSpec = tween(300)
@@ -242,7 +250,7 @@ private fun TotalValueHeader(
                     )
 
                     // Profit/Loss info
-                    if (profitLoss != 0.0) {
+                    if (abs(profitLoss) > 0.01) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -270,6 +278,7 @@ private fun TotalValueHeader(
                     }
                 }
 
+                // Analytics Button
                 IconButton(
                     onClick = onAnalyticsClick,
                     modifier = Modifier
@@ -406,12 +415,74 @@ private fun formatCurrency(amount: Double): String {
 }
 
 private fun formatProfitLossPercentage(percentage: Double, profitLoss: Double): String {
-    val absPercentage = kotlin.math.abs(percentage)
+    val absPercentage = abs(percentage)
 
     return if (absPercentage < 0.01 && profitLoss != 0.0) {
         "${if (profitLoss >= 0) "+" else ""}<0,01%"
     } else {
         val sign = if (profitLoss >= 0) "+" else ""
         "$sign${String.format("%.2f", percentage)}%"
+    }
+}
+
+@Composable
+private fun DebugAssetsSection(viewModel: AssetsViewModel) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "🐛 DEBUG - Assets Test",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error
+            )
+
+            Text(
+                text = "Test varlıkları ekleyerek kar/zarar hesaplamalarını test edin",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = { viewModel.generateRandomTestData() },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Test Verisi Ekle", style = MaterialTheme.typography.labelSmall)
+                }
+
+                Button(
+                    onClick = { viewModel.clearTestData() },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Temizle", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+
+            Text(
+                text = "• Test Verisi Ekle: 3 farklı kar/zarar senaryosu\n• Temizle: Tüm varlıkları sil",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+            )
+        }
     }
 }

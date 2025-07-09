@@ -12,6 +12,7 @@ import com.xptlabs.varliktakibi.presentation.onboarding.OnboardingScreen
 import com.xptlabs.varliktakibi.presentation.permissions.PermissionScreen
 import com.xptlabs.varliktakibi.presentation.splash.SplashScreen
 import com.xptlabs.varliktakibi.presentation.splash.SplashViewModel
+import com.xptlabs.varliktakibi.presentation.analytics.AnalyticsScreen
 
 @Composable
 fun AssetTrackerNavHost(
@@ -68,6 +69,11 @@ fun AssetTrackerNavHost(
 
         composable(Screen.Main.route) {
             MainTabView()
+        }
+
+        // Analytics Screen
+        composable(Screen.Analytics.route) {
+            AnalyticsScreen(navController = navController)
         }
     }
 }

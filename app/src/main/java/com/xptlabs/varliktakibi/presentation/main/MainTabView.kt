@@ -17,6 +17,7 @@ import androidx.navigation.compose.rememberNavController
 import com.xptlabs.varliktakibi.presentation.assets.AssetsScreen
 import com.xptlabs.varliktakibi.presentation.rates.RatesScreen
 import com.xptlabs.varliktakibi.presentation.settings.SettingsScreen
+import com.xptlabs.varliktakibi.presentation.analytics.AnalyticsScreen
 
 sealed class BottomNavItem(
     val route: String,
@@ -60,8 +61,17 @@ fun MainTabView() {
             composable(BottomNavItem.Settings.route) {
                 SettingsScreen()
             }
+            // Analytics screen - accessible from Assets screen
+            composable("analytics") {
+                AnalyticsScreen(navController = navController)
+            }
         }
     }
+}
+
+@Composable
+fun AssetsScreen(navController: NavHostController) {
+    TODO("Not yet implemented")
 }
 
 @Composable

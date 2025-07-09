@@ -3,14 +3,19 @@ package com.xptlabs.varliktakibi.presentation.assets
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.domain.models.Asset
+import com.xptlabs.varliktakibi.domain.models.AssetType
 import com.xptlabs.varliktakibi.domain.repository.AssetRepository
 import com.xptlabs.varliktakibi.managers.MarketDataManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.Date
+import java.util.UUID
 import javax.inject.Inject
+import kotlin.math.abs
 
 data class AssetsUiState(
     val assets: List<Asset> = emptyList(),
@@ -55,6 +60,11 @@ class AssetsViewModel @Inject constructor(
                 Log.d(TAG, "Refreshing market data")
                 marketDataManager.refreshAllData()
 
+                // Debug mode'da test verileri ekle
+                if (BuildConfig.DEBUG) {
+                    addTestDataIfEmpty()
+                }
+
                 Log.d(TAG, "Initial data load completed")
 
             } catch (exception: Exception) {
@@ -79,9 +89,13 @@ class AssetsViewModel @Inject constructor(
                 }
                 .collect { assets ->
                     Log.d(TAG, "Assets updated: ${assets.size} assets")
-                    val portfolioData = calculatePortfolioData(assets)
+
+                    // Update asset prices with current market data
+                    val updatedAssets = updateAssetPrices(assets)
+                    val portfolioData = calculatePortfolioData(updatedAssets)
+
                     _uiState.value = _uiState.value.copy(
-                        assets = assets,
+                        assets = updatedAssets,
                         isLoading = false,
                         hasDataLoaded = true,
                         errorMessage = null,
@@ -92,13 +106,13 @@ class AssetsViewModel @Inject constructor(
                     )
 
                     // Analytics
-                    if (assets.isNotEmpty()) {
+                    if (updatedAssets.isNotEmpty()) {
                         analyticsManager.logPortfolioViewed(
                             totalValue = portfolioData.totalValue,
-                            assetCount = assets.size
+                            assetCount = updatedAssets.size
                         )
 
-                        if (portfolioData.profitLoss != 0.0) {
+                        if (abs(portfolioData.profitLoss) > 0.01) {
                             analyticsManager.logPortfolioProfitLoss(
                                 profitLoss = portfolioData.profitLoss,
                                 profitLossPercentage = portfolioData.profitLossPercentage
@@ -131,6 +145,30 @@ class AssetsViewModel @Inject constructor(
                 }
             }
         }
+
+        // Market data changes should trigger asset price updates
+        viewModelScope.launch {
+            combine(
+                marketDataManager.goldRates,
+                marketDataManager.currencyRates
+            ) { _, _ ->
+                // Trigger asset price update when market data changes
+                Log.d(TAG, "Market data updated, refreshing asset prices")
+                Unit
+            }.collect {
+                // This will trigger the assets observer which will update prices
+            }
+        }
+    }
+
+    private fun updateAssetPrices(assets: List<Asset>): List<Asset> {
+        return assets.map { asset ->
+            val currentPrice = marketDataManager.getCurrentPrice(asset.type)
+            asset.copy(
+                currentPrice = currentPrice,
+                lastUpdated = Date()
+            )
+        }
     }
 
     fun loadAssets() {
@@ -156,7 +194,12 @@ class AssetsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 Log.d(TAG, "Adding asset: ${asset.name}")
-                assetRepository.insertAsset(asset)
+                val updatedAsset = asset.copy(
+                    currentPrice = marketDataManager.getCurrentPrice(asset.type),
+                    lastUpdated = Date()
+                )
+
+                assetRepository.insertAsset(updatedAsset)
 
                 // Analytics
                 analyticsManager.logAssetAdded(
@@ -183,36 +226,48 @@ class AssetsViewModel @Inject constructor(
             try {
                 Log.d(TAG, "Adding or updating asset: ${newAsset.name} - ${newAsset.type}")
 
-                // Aynı türden varlık var mı kontrol et
-                val existingAssets = assetRepository.getAllAssets().first()
-                val existingAsset = existingAssets.find { it.type == newAsset.type }
+                // Get current price
+                val currentPrice = marketDataManager.getCurrentPrice(newAsset.type)
+                val updatedAsset = newAsset.copy(
+                    currentPrice = currentPrice,
+                    lastUpdated = Date()
+                )
+
+                // Check if asset of same type already exists
+                val currentAssets = assetRepository.getAllAssets().first()
+                val existingAsset = currentAssets.find { it.type == newAsset.type }
 
                 if (existingAsset != null) {
-                    // Mevcut varlık varsa, miktarı topla
-                    val updatedAsset = existingAsset.copy(
+                    // Update existing asset - add amounts
+                    val combinedAsset = existingAsset.copy(
                         amount = existingAsset.amount + newAsset.amount,
-                        currentPrice = newAsset.currentPrice, // Güncel fiyatı güncelle
-                        lastUpdated = newAsset.lastUpdated
+                        // Calculate weighted average purchase price
+                        purchasePrice = calculateWeightedAveragePrice(
+                            existingAsset.amount, existingAsset.purchasePrice,
+                            newAsset.amount, newAsset.purchasePrice
+                        ),
+                        currentPrice = currentPrice,
+                        lastUpdated = Date()
                     )
 
-                    Log.d(TAG, "Updating existing asset: ${existingAsset.amount} + ${newAsset.amount} = ${updatedAsset.amount}")
-                    assetRepository.updateAsset(updatedAsset)
+                    Log.d(TAG, "Updating existing asset: ${existingAsset.amount} + ${newAsset.amount} = ${combinedAsset.amount}")
+                    assetRepository.updateAsset(combinedAsset)
 
                     // Analytics
                     analyticsManager.logAssetUpdated(
-                        assetType = updatedAsset.type.name,
+                        assetType = combinedAsset.type.name,
                         oldAmount = existingAsset.amount,
-                        newAmount = updatedAsset.amount
+                        newAmount = combinedAsset.amount
                     )
                 } else {
-                    // Yeni varlık ekle
-                    Log.d(TAG, "Adding new asset: ${newAsset.name}")
-                    assetRepository.insertAsset(newAsset)
+                    // Add new asset
+                    Log.d(TAG, "Adding new asset: ${updatedAsset.name}")
+                    assetRepository.insertAsset(updatedAsset)
 
                     // Analytics
                     analyticsManager.logAssetAdded(
-                        assetType = newAsset.type.name,
-                        amount = newAsset.amount
+                        assetType = updatedAsset.type.name,
+                        amount = updatedAsset.amount
                     )
                 }
 
@@ -235,7 +290,13 @@ class AssetsViewModel @Inject constructor(
             try {
                 Log.d(TAG, "Updating asset: ${asset.name}")
                 val existingAsset = assetRepository.getAssetById(asset.id)
-                assetRepository.updateAsset(asset)
+
+                val updatedAsset = asset.copy(
+                    currentPrice = marketDataManager.getCurrentPrice(asset.type),
+                    lastUpdated = Date()
+                )
+
+                assetRepository.updateAsset(updatedAsset)
 
                 // Analytics
                 existingAsset?.let { existing ->
@@ -291,6 +352,157 @@ class AssetsViewModel @Inject constructor(
         marketDataManager.clearError()
     }
 
+    // Debug functions for testing
+    fun generateRandomTestData() {
+        if (BuildConfig.DEBUG) {
+            viewModelScope.launch {
+                try {
+                    Log.d(TAG, "Generating random test data")
+
+                    // Clear existing assets first
+                    assetRepository.deleteAllAssets()
+
+                    // Generate random scenarios
+                    val scenarios = listOf(
+                        // Scenario 1: Overall profit
+                        listOf(
+                            createTestAsset("Gram Altın", AssetType.GOLD, 15.0, 2400.0),
+                            createTestAsset("Dolar", AssetType.USD, 2000.0, 33.0),
+                            createTestAsset("Euro", AssetType.EUR, 800.0, 35.5),
+                            createTestAsset("Çeyrek Altın", AssetType.GOLD_QUARTER, 2.0, 720.0)
+                        ),
+                        // Scenario 2: Overall loss
+                        listOf(
+                            createTestAsset("Gram Altın", AssetType.GOLD, 8.0, 2900.0),
+                            createTestAsset("Dolar", AssetType.USD, 1500.0, 35.5),
+                            createTestAsset("Euro", AssetType.EUR, 600.0, 39.0),
+                            createTestAsset("Yarım Altın", AssetType.GOLD_HALF, 1.0, 1550.0)
+                        ),
+                        // Scenario 3: Mixed results
+                        listOf(
+                            createTestAsset("Gram Altın", AssetType.GOLD, 12.0, 2600.0),
+                            createTestAsset("Dolar", AssetType.USD, 3000.0, 34.0),
+                            createTestAsset("Euro", AssetType.EUR, 1200.0, 37.0),
+                            createTestAsset("Sterlin", AssetType.GBP, 300.0, 42.0),
+                            createTestAsset("Tam Altın", AssetType.GOLD_FULL, 1.0, 2950.0)
+                        )
+                    )
+
+                    // Select random scenario
+                    val selectedScenario = scenarios.random()
+
+                    // Add assets
+                    selectedScenario.forEach { asset ->
+                        assetRepository.insertAsset(asset)
+                    }
+
+                    Log.d(TAG, "Random test data generated: ${selectedScenario.size} assets")
+
+                    // Analytics
+                    analyticsManager.logCustomEvent(
+                        eventName = "debug_test_data_generated",
+                        parameters = mapOf(
+                            "asset_count" to selectedScenario.size,
+                            "scenario" to "random"
+                        )
+                    )
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error generating random test data", e)
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = "Test verisi oluşturulamadı: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearTestData() {
+        if (BuildConfig.DEBUG) {
+            viewModelScope.launch {
+                try {
+                    Log.d(TAG, "Clearing all test data")
+                    assetRepository.deleteAllAssets()
+
+                    // Analytics
+                    analyticsManager.logCustomEvent(
+                        eventName = "debug_test_data_cleared",
+                        parameters = emptyMap()
+                    )
+
+                    Log.d(TAG, "All test data cleared")
+
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error clearing test data", e)
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = "Test verisi temizlenemedi: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    // Debug function - add test data if empty
+    private fun addTestDataIfEmpty() {
+        viewModelScope.launch {
+            try {
+                val currentAssets = assetRepository.getAllAssets().first()
+                if (currentAssets.isEmpty()) {
+                    Log.d(TAG, "No assets found, adding test data")
+
+                    val testAssets = listOf(
+                        createTestAsset(
+                            name = "Test Gram Altın",
+                            type = AssetType.GOLD,
+                            amount = 10.0,
+                            purchasePrice = 2600.0
+                        ),
+                        createTestAsset(
+                            name = "Test Dolar",
+                            type = AssetType.USD,
+                            amount = 1000.0,
+                            purchasePrice = 34.0
+                        ),
+                        createTestAsset(
+                            name = "Test Euro",
+                            type = AssetType.EUR,
+                            amount = 500.0,
+                            purchasePrice = 37.0
+                        )
+                    )
+
+                    testAssets.forEach { asset ->
+                        assetRepository.insertAsset(asset)
+                    }
+
+                    Log.d(TAG, "Test assets added: ${testAssets.size}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error adding test data", e)
+            }
+        }
+    }
+
+    private fun createTestAsset(
+        name: String,
+        type: AssetType,
+        amount: Double,
+        purchasePrice: Double
+    ): Asset {
+        val currentPrice = marketDataManager.getCurrentPrice(type)
+        return Asset(
+            id = UUID.randomUUID().toString(),
+            type = type,
+            name = name,
+            amount = amount,
+            unit = type.unit,
+            purchasePrice = purchasePrice,
+            currentPrice = currentPrice,
+            dateAdded = Date(),
+            lastUpdated = Date()
+        )
+    }
+
     private fun calculatePortfolioData(assets: List<Asset>): PortfolioData {
         if (assets.isEmpty()) {
             return PortfolioData()
@@ -311,6 +523,20 @@ class AssetsViewModel @Inject constructor(
             profitLoss = profitLoss,
             profitLossPercentage = profitLossPercentage
         )
+    }
+
+    private fun calculateWeightedAveragePrice(
+        existingAmount: Double,
+        existingPrice: Double,
+        newAmount: Double,
+        newPrice: Double
+    ): Double {
+        val totalAmount = existingAmount + newAmount
+        return if (totalAmount > 0) {
+            ((existingAmount * existingPrice) + (newAmount * newPrice)) / totalAmount
+        } else {
+            existingPrice
+        }
     }
 
     private data class PortfolioData(

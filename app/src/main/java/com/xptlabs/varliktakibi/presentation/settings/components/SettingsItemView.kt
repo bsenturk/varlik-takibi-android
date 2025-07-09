@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.xptlabs.varliktakibi.BuildConfig
 
-// SettingsItemView komponenti (ayrı dosya olarak da kullanılabilir)
 @Composable
 fun SettingsItemView(
     icon: ImageVector,
