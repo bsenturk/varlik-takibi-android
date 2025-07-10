@@ -9,15 +9,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.xptlabs.varliktakibi.ads.AdMobManager
+import com.xptlabs.varliktakibi.ads.components.AdMobBannerAd
+import com.xptlabs.varliktakibi.presentation.analytics.AnalyticsScreen
 import com.xptlabs.varliktakibi.presentation.assets.AssetsScreen
 import com.xptlabs.varliktakibi.presentation.rates.RatesScreen
 import com.xptlabs.varliktakibi.presentation.settings.SettingsScreen
-import com.xptlabs.varliktakibi.presentation.analytics.AnalyticsScreen
 
 sealed class BottomNavItem(
     val route: String,
@@ -31,8 +32,13 @@ sealed class BottomNavItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainTabView() {
+fun MainTabView(
+    adMobManager: AdMobManager
+) {
     val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
     val items = listOf(
         BottomNavItem.Assets,
         BottomNavItem.Rates,
@@ -47,31 +53,77 @@ fun MainTabView() {
             )
         }
     ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = BottomNavItem.Assets.route,
-            modifier = Modifier.padding(paddingValues)
+        // Ana content column
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
-            composable(BottomNavItem.Assets.route) {
-                AssetsScreen(navController = navController)
-            }
-            composable(BottomNavItem.Rates.route) {
-                RatesScreen()
-            }
-            composable(BottomNavItem.Settings.route) {
-                SettingsScreen()
-            }
-            // Analytics screen - accessible from Assets screen
-            composable("analytics") {
-                AnalyticsScreen(navController = navController)
+            // Main content (takes remaining space)
+            Box(
+                modifier = Modifier.weight(1f)
+            ) {
+                NavHost(
+                    navController = navController,
+                    startDestination = BottomNavItem.Assets.route,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    composable(BottomNavItem.Assets.route) {
+                        // Assets screen ile banner ad'ı birlikte göster
+                        AssetsScreenWithBanner(
+                            navController = navController,
+                            adMobManager = adMobManager
+                        )
+                    }
+                    composable(BottomNavItem.Rates.route) {
+                        RatesScreen()
+                    }
+                    composable(BottomNavItem.Settings.route) {
+                        SettingsScreen()
+                    }
+                    // Analytics screen - accessible from Assets screen
+                    composable("analytics") {
+                        AnalyticsScreen(navController = navController)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-fun AssetsScreen(navController: NavHostController) {
-    TODO("Not yet implemented")
+private fun AssetsScreenWithBanner(
+    navController: NavController,
+    adMobManager: AdMobManager
+) {
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
+
+        AssetsScreen(
+            navController = navController,
+            modifier = Modifier.weight(1f)
+        )
+        HorizontalDivider(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+        )
+
+        AdMobBannerAd(
+            adMobManager = adMobManager,
+            modifier = Modifier.fillMaxWidth(),
+            screenName = "assets_screen",
+            onAdLoaded = {
+                // Banner ad loaded successfully on Assets screen
+            },
+            onAdFailedToLoad = { error ->
+                // Handle ad load failure on Assets screen
+            },
+            onAdClicked = {
+                // Handle ad click on Assets screen
+            }
+        )
+    }
 }
 
 @Composable

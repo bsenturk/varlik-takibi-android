@@ -34,6 +34,10 @@ android {
             buildConfigField("boolean", "DEBUG", "false")
             buildConfigField("String", "BUILD_TYPE", "\"release\"")
             buildConfigField("boolean", "FIREBASE_DEBUG", "false")
+
+            // AdMob Production IDs
+            buildConfigField("String", "ADMOB_APP_OPEN_ID", "\"ca-app-pub-2545255000258244/9897563908\"")
+            buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-2545255000258244/2703290545\"")
         }
 
         debug {
@@ -43,6 +47,10 @@ android {
             buildConfigField("boolean", "DEBUG", "true")
             buildConfigField("String", "BUILD_TYPE", "\"debug\"")
             buildConfigField("boolean", "FIREBASE_DEBUG", "true")
+
+            // AdMob Test IDs for debug
+            buildConfigField("String", "ADMOB_APP_OPEN_ID", "\"ca-app-pub-3940256099942544/9257395921\"")
+            buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-3940256099942544/6300978111\"")
         }
     }
 
@@ -64,6 +72,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.process)
+    implementation(libs.androidx.core.splashscreen)
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -117,4 +127,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
+
+    // AdMob
+    implementation(libs.play.services.ads)
 }

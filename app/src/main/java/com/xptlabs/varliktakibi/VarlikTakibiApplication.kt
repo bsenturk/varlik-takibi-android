@@ -6,8 +6,10 @@ import androidx.work.Configuration
 import com.google.firebase.FirebaseApp
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.xptlabs.varliktakibi.ads.AdMobManager
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.managers.AssetTrackerWorkManager
+import com.xptlabs.varliktakibi.notifications.AppNotificationManager
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -23,6 +25,12 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var analyticsManager: FirebaseAnalyticsManager
 
+    @Inject
+    lateinit var adMobManager: AdMobManager
+
+    @Inject
+    lateinit var notificationManager: AppNotificationManager
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -33,6 +41,12 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
 
         // Initialize Firebase
         initializeFirebase()
+
+        // Initialize AdMob
+        initializeAdMob()
+
+        // Initialize Notifications
+        initializeNotifications()
 
         // Setup global exception handler
         setupGlobalExceptionHandler()
@@ -65,6 +79,27 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
         setFirebaseUserProperties()
     }
 
+    private fun initializeAdMob() {
+        // Register activity lifecycle callbacks for AdMob
+        adMobManager.registerActivityLifecycleCallbacks(this)
+
+        // Preload app open ad
+        adMobManager.preloadAppOpenAd()
+    }
+
+    private fun initializeNotifications() {
+        // Schedule first notification on app start
+        notificationManager.scheduleNextNotification()
+
+        // Analytics
+        analyticsManager.logCustomEvent(
+            eventName = "notification_system_initialized",
+            parameters = mapOf(
+                "notifications_enabled" to notificationManager.areNotificationsEnabled()
+            )
+        )
+    }
+
     private fun setFirebaseUserProperties() {
         analyticsManager.apply {
             setUserProperty("app_version", BuildConfig.VERSION_NAME)
@@ -72,6 +107,7 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
             setUserProperty("version_code", BuildConfig.VERSION_CODE.toString())
             setUserProperty("debug_build", BuildConfig.DEBUG.toString())
             setUserProperty("firebase_debug", BuildConfig.FIREBASE_DEBUG.toString())
+            setUserProperty("notifications_enabled", notificationManager.areNotificationsEnabled().toString())
         }
     }
 

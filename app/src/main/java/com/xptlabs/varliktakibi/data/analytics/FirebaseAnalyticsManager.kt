@@ -181,4 +181,61 @@ class FirebaseAnalyticsManager @Inject constructor() {
             }
         }
     }
+
+    // FirebaseAnalyticsManager.kt içerisine AdMob analytics için aşağıdaki methodları ekleyin:
+
+    // AdMob Events
+    fun logAdLoaded(adType: String, adUnitId: String) {
+        firebaseAnalytics.logEvent("ad_loaded") {
+            param("ad_type", adType)
+            param("ad_unit_id", adUnitId)
+            param("timestamp", System.currentTimeMillis())
+        }
+    }
+
+    fun logAdFailedToLoad(adType: String, adUnitId: String, errorCode: Int, errorMessage: String) {
+        firebaseAnalytics.logEvent("ad_failed_to_load") {
+            param("ad_type", adType)
+            param("ad_unit_id", adUnitId)
+            param("error_code", errorCode.toLong())
+            param("error_message", errorMessage)
+        }
+    }
+
+    fun logAdShown(adType: String, adUnitId: String) {
+        firebaseAnalytics.logEvent("ad_shown") {
+            param("ad_type", adType)
+            param("ad_unit_id", adUnitId)
+            param("timestamp", System.currentTimeMillis())
+        }
+    }
+
+    fun logAdClicked(adType: String, adUnitId: String) {
+        firebaseAnalytics.logEvent("ad_clicked") {
+            param("ad_type", adType)
+            param("ad_unit_id", adUnitId)
+            param("timestamp", System.currentTimeMillis())
+        }
+    }
+
+    fun logAdClosed(adType: String, adUnitId: String) {
+        firebaseAnalytics.logEvent("ad_closed") {
+            param("ad_type", adType)
+            param("ad_unit_id", adUnitId)
+            param("timestamp", System.currentTimeMillis())
+        }
+    }
+
+    fun logAppOpenAdShown() {
+        firebaseAnalytics.logEvent("app_open_ad_shown") {
+            param("timestamp", System.currentTimeMillis())
+        }
+    }
+
+    fun logBannerAdShown(screenName: String) {
+        firebaseAnalytics.logEvent("banner_ad_shown") {
+            param("screen_name", screenName)
+            param("timestamp", System.currentTimeMillis())
+        }
+    }
 }

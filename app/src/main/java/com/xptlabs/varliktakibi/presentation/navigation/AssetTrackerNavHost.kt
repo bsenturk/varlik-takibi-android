@@ -7,16 +7,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.xptlabs.varliktakibi.ads.AdMobManager
+import com.xptlabs.varliktakibi.presentation.analytics.AnalyticsScreen
 import com.xptlabs.varliktakibi.presentation.main.MainTabView
 import com.xptlabs.varliktakibi.presentation.onboarding.OnboardingScreen
 import com.xptlabs.varliktakibi.presentation.permissions.PermissionScreen
 import com.xptlabs.varliktakibi.presentation.splash.SplashScreen
 import com.xptlabs.varliktakibi.presentation.splash.SplashViewModel
-import com.xptlabs.varliktakibi.presentation.analytics.AnalyticsScreen
+import javax.inject.Inject
 
 @Composable
 fun AssetTrackerNavHost(
     navController: NavHostController,
+    adMobManager: AdMobManager,
     startDestination: String = Screen.Splash.route
 ) {
     NavHost(
@@ -68,7 +71,7 @@ fun AssetTrackerNavHost(
         }
 
         composable(Screen.Main.route) {
-            MainTabView()
+            MainTabView(adMobManager = adMobManager)
         }
 
         // Analytics Screen

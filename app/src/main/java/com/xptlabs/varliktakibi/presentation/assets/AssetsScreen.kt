@@ -37,11 +37,14 @@ import com.xptlabs.varliktakibi.presentation.navigation.Screen
 import com.xptlabs.varliktakibi.BuildConfig
 import kotlin.math.abs
 
+// AssetsScreen.kt dosyasının başındaki composable fonksiyonu şu şekilde güncelleyin:
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AssetsScreen(
     navController: NavController,
-    viewModel: AssetsViewModel = hiltViewModel()
+    viewModel: AssetsViewModel = hiltViewModel(),
+    modifier: Modifier = Modifier  // Bu parametreyi ekleyin
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAddAssetDialog by remember { mutableStateOf(false) }
@@ -61,9 +64,8 @@ fun AssetsScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize()
     ) {
-        // Debug section only in debug builds
         if (BuildConfig.DEBUG) {
             DebugAssetsSection(viewModel = viewModel)
         }

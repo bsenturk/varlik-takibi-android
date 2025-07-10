@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.data.local.preferences.PreferencesDataSource
 import com.xptlabs.varliktakibi.domain.repository.AssetRepository
+import com.xptlabs.varliktakibi.notifications.AppNotificationManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +25,8 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     private val preferencesDataSource: PreferencesDataSource,
     private val assetRepository: AssetRepository,
-    private val analyticsManager: FirebaseAnalyticsManager
+    private val analyticsManager: FirebaseAnalyticsManager,
+    val notificationManager: AppNotificationManager
 ) : ViewModel() {
 
     companion object {

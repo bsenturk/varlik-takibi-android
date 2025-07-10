@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.xptlabs.varliktakibi.BuildConfig
+import com.xptlabs.varliktakibi.notifications.AppNotificationManager
 import com.xptlabs.varliktakibi.presentation.components.GradientButton
 import com.xptlabs.varliktakibi.presentation.settings.components.*
 
@@ -290,8 +291,13 @@ private fun AppInfoSection() {
     }
 }
 
+// SettingsScreen.kt dosyasına Debug section'a şunu ekleyin:
+
 @Composable
 private fun DebugSection(viewModel: SettingsViewModel) {
+    val context = LocalContext.current
+    val notificationManager: AppNotificationManager = hiltViewModel<SettingsViewModel>().notificationManager
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -337,6 +343,43 @@ private fun DebugSection(viewModel: SettingsViewModel) {
                     Text("Test Analytics")
                 }
             }
+
+            // Notification test buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        notificationManager.sendTestNotification()
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("Test Notification", style = MaterialTheme.typography.labelSmall)
+                }
+
+                Button(
+                    onClick = {
+                        notificationManager.cancelAllScheduledNotifications()
+                        notificationManager.scheduleNextNotification()
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text("Reset Schedule", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+
+            Text(
+                text = "Notifications: ${if (notificationManager.areNotificationsEnabled()) "Enabled" else "Disabled"}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

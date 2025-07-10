@@ -104,13 +104,12 @@ fun AssetCard(
                 )
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Edit Button
                     IconButton(
                         onClick = onEdit,
                         modifier = Modifier
-                            .size(28.dp)
                             .background(
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                                 RoundedCornerShape(8.dp)
@@ -128,7 +127,6 @@ fun AssetCard(
                     IconButton(
                         onClick = { showDeleteDialog = true },
                         modifier = Modifier
-                            .size(28.dp)
                             .background(
                                 MaterialTheme.colorScheme.error.copy(alpha = 0.1f),
                                 RoundedCornerShape(8.dp)
