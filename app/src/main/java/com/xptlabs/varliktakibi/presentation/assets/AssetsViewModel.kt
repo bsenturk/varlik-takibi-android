@@ -86,11 +86,10 @@ class AssetsViewModel @Inject constructor(
                     Log.d(TAG, "Assets updated: ${assets.size} assets")
 
                     // Update asset prices with current market data
-                    val updatedAssets = updateAssetPrices(assets)
-                    val portfolioData = calculatePortfolioData(updatedAssets)
+                    val portfolioData = calculatePortfolioData(assets)
 
                     _uiState.value = _uiState.value.copy(
-                        assets = updatedAssets,
+                        assets = assets,
                         isLoading = false,
                         hasDataLoaded = true,
                         errorMessage = null,
@@ -101,10 +100,10 @@ class AssetsViewModel @Inject constructor(
                     )
 
                     // Analytics
-                    if (updatedAssets.isNotEmpty()) {
+                    if (assets.isNotEmpty()) {
                         analyticsManager.logPortfolioViewed(
                             totalValue = portfolioData.totalValue,
-                            assetCount = updatedAssets.size
+                            assetCount = assets.size
                         )
 
                         if (abs(portfolioData.profitLoss) > 0.01) {
