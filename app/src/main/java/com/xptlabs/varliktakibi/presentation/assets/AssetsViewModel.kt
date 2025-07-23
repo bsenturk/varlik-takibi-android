@@ -60,11 +60,6 @@ class AssetsViewModel @Inject constructor(
                 Log.d(TAG, "Refreshing market data")
                 marketDataManager.refreshAllData()
 
-                // Debug mode'da test verileri ekle
-                if (BuildConfig.DEBUG) {
-                    addTestDataIfEmpty()
-                }
-
                 Log.d(TAG, "Initial data load completed")
 
             } catch (exception: Exception) {
@@ -452,19 +447,19 @@ class AssetsViewModel @Inject constructor(
 
                     val testAssets = listOf(
                         createTestAsset(
-                            name = "Test Gram Altın",
+                            name = "Gram Altın",
                             type = AssetType.GOLD,
                             amount = 10.0,
                             purchasePrice = 2600.0
                         ),
                         createTestAsset(
-                            name = "Test Dolar",
+                            name = "Dolar",
                             type = AssetType.USD,
                             amount = 1000.0,
                             purchasePrice = 34.0
                         ),
                         createTestAsset(
-                            name = "Test Euro",
+                            name = "Euro",
                             type = AssetType.EUR,
                             amount = 500.0,
                             purchasePrice = 37.0

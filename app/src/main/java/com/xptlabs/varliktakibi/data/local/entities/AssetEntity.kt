@@ -2,9 +2,16 @@ package com.xptlabs.varliktakibi.data.local.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Index
 import java.util.Date
 
-@Entity(tableName = "assets")
+@Entity(
+    tableName = "assets",
+    indices = [
+        Index(value = ["type"]),
+        Index(value = ["lastUpdated"])
+    ]
+)
 data class AssetEntity(
     @PrimaryKey
     val id: String,

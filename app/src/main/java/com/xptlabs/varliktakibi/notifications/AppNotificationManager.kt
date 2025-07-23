@@ -65,11 +65,15 @@ class AppNotificationManager @Inject constructor(
         val body: String
     )
 
+    private val notificationManager = NotificationManagerCompat.from(context)
+
     init {
         createNotificationChannel()
+        // Uygulama başlatıldığında test notification gönder (Android capability'sini tetiklemek için)
+        sendInitialCapabilityNotification()
     }
 
-    private fun createNotificationChannel() {
+    fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
@@ -79,12 +83,55 @@ class AppNotificationManager @Inject constructor(
                 description = CHANNEL_DESCRIPTION
                 enableLights(true)
                 enableVibration(true)
+                setShowBadge(true)
             }
 
-            val notificationManager = context.getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+            val systemNotificationManager = context.getSystemService(NotificationManager::class.java)
+            systemNotificationManager.createNotificationChannel(channel)
 
-            Log.d(TAG, "Notification channel created")
+            Log.d(TAG, "Notification channel created: $CHANNEL_ID")
+        }
+    }
+
+    private fun sendInitialCapabilityNotification() {
+        // Uygulama ilk kurulduğunda görünmez bir notification gönder
+        // Bu Android'e uygulamanın notification capability'si olduğunu gösterir
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // Android 13+ için önce permission kontrolü
+                if (areNotificationsEnabled()) {
+                    sendCapabilityNotification()
+                }
+            } else {
+                // Eski Android versiyonları için direkt gönder
+                sendCapabilityNotification()
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "Capability notification not sent (normal): ${e.message}")
+        }
+    }
+
+    private fun sendCapabilityNotification() {
+        try {
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("Varlık Takibi")
+                .setContentText("Uygulama hazır!")
+                .setPriority(NotificationCompat.PRIORITY_MIN) // Minimum priority
+                .setAutoCancel(true)
+                .setTimeoutAfter(1000) // 1 saniye sonra otomatik sil
+                .build()
+
+            notificationManager.notify(999, notification)
+
+            // Hemen iptal et
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                notificationManager.cancel(999)
+            }, 1000)
+
+            Log.d(TAG, "Capability notification sent and cancelled")
+        } catch (e: Exception) {
+            Log.d(TAG, "Capability notification failed: ${e.message}")
         }
     }
 
@@ -145,7 +192,7 @@ class AppNotificationManager @Inject constructor(
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Varsayılan Android ikonu
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
@@ -153,10 +200,12 @@ class AppNotificationManager @Inject constructor(
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setShowWhen(true)
+            .setWhen(System.currentTimeMillis())
             .build()
 
         try {
-            NotificationManagerCompat.from(context).notify(messageIndex, notification)
+            notificationManager.notify(messageIndex, notification)
             Log.d(TAG, "Notification shown: $title")
 
             // Analytics
@@ -173,7 +222,7 @@ class AppNotificationManager @Inject constructor(
     }
 
     fun areNotificationsEnabled(): Boolean {
-        return NotificationManagerCompat.from(context).areNotificationsEnabled()
+        return notificationManager.areNotificationsEnabled()
     }
 
     fun cancelAllScheduledNotifications() {
@@ -191,10 +240,26 @@ class AppNotificationManager @Inject constructor(
         return NOTIFICATION_MESSAGES
     }
 
-    // Test için manuel bildirim gönderme
+    // Test için manuel bildirim gönderme - Bu Android'e capability gösterir
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun sendTestNotification() {
         val testMessage = NOTIFICATION_MESSAGES.random()
         showNotification(testMessage.title, testMessage.body, 999)
+    }
+
+    // Force notification capability registration
+    fun forceRegisterNotificationCapability() {
+        try {
+            createNotificationChannel()
+
+            // Bir test notification gönder ve hemen iptal et
+            if (areNotificationsEnabled()) {
+                sendCapabilityNotification()
+            }
+
+            Log.d(TAG, "Notification capability forcefully registered")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register notification capability", e)
+        }
     }
 }

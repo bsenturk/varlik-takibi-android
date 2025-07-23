@@ -2,6 +2,8 @@ package com.xptlabs.varliktakibi.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.data.local.dao.AssetDao
 import com.xptlabs.varliktakibi.data.local.dao.RateDao
 import com.xptlabs.varliktakibi.data.local.database.AssetTrackerDatabase
@@ -21,13 +23,22 @@ object DatabaseModule {
     fun provideAssetTrackerDatabase(
         @ApplicationContext context: Context
     ): AssetTrackerDatabase {
-        return Room.databaseBuilder(
+        val builder = Room.databaseBuilder(
             context,
             AssetTrackerDatabase::class.java,
             AssetTrackerDatabase.DATABASE_NAME
         )
-            .fallbackToDestructiveMigration() // Development için
-            .build()
+
+        if (BuildConfig.DEBUG) {
+            builder.fallbackToDestructiveMigration()
+                .allowMainThreadQueries()
+        } else {
+            builder.fallbackToDestructiveMigration()
+                .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                .enableMultiInstanceInvalidation()
+        }
+
+        return builder.build()
     }
 
     @Provides

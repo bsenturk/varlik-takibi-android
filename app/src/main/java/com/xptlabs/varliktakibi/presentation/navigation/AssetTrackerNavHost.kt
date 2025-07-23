@@ -11,10 +11,8 @@ import com.xptlabs.varliktakibi.ads.AdMobManager
 import com.xptlabs.varliktakibi.presentation.analytics.AnalyticsScreen
 import com.xptlabs.varliktakibi.presentation.main.MainTabView
 import com.xptlabs.varliktakibi.presentation.onboarding.OnboardingScreen
-import com.xptlabs.varliktakibi.presentation.permissions.PermissionScreen
 import com.xptlabs.varliktakibi.presentation.splash.SplashScreen
 import com.xptlabs.varliktakibi.presentation.splash.SplashViewModel
-import javax.inject.Inject
 
 @Composable
 fun AssetTrackerNavHost(
@@ -38,7 +36,7 @@ fun AssetTrackerNavHost(
                     }
                 },
                 onNavigateToMain = {
-                    navController.navigate("permissions") {
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(Screen.Splash.route) { inclusive = true }
                     }
                 }
@@ -48,23 +46,9 @@ fun AssetTrackerNavHost(
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onOnboardingComplete = {
-                    navController.navigate("permissions") {
+                    // Onboarding tamamlandığında direkt ana sayfaya git
+                    navController.navigate(Screen.Main.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }
-                    }
-                }
-            )
-        }
-
-        composable("permissions") {
-            PermissionScreen(
-                onPermissionsGranted = {
-                    navController.navigate(Screen.Main.route) {
-                        popUpTo("permissions") { inclusive = true }
-                    }
-                },
-                onSkip = {
-                    navController.navigate(Screen.Main.route) {
-                        popUpTo("permissions") { inclusive = true }
                     }
                 }
             )

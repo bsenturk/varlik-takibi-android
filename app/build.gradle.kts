@@ -22,13 +22,20 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    lint {
+        baseline = file("lint-baseline.xml")
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            buildConfigField("boolean", "DATABASE_DEBUG", "false")
 
             // Release build config fields
             buildConfigField("boolean", "DEBUG", "false")
@@ -42,6 +49,7 @@ android {
 
         debug {
             isDebuggable = true
+            buildConfigField("boolean", "DATABASE_DEBUG", "true")
 
             // Debug build config fields
             buildConfigField("boolean", "DEBUG", "true")

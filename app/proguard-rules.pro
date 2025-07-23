@@ -19,3 +19,18 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Room Database
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-keep @androidx.room.Dao class *
+-dontwarn androidx.room.paging.**
+
+# Varlık Takibi specific
+-keep class com.xptlabs.varliktakibi.data.local.entities.** { *; }
+-keep class com.xptlabs.varliktakibi.data.local.dao.** { *; }
+
+# Gson (JSON export için)
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class com.google.gson.** { *; }

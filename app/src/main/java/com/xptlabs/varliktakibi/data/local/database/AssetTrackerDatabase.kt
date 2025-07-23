@@ -13,7 +13,7 @@ import com.xptlabs.varliktakibi.data.local.entities.RateEntity
 @Database(
     entities = [AssetEntity::class, RateEntity::class],
     version = 3,
-    exportSchema = false
+    exportSchema = true
 )
 @TypeConverters(Converters::class)
 abstract class AssetTrackerDatabase : RoomDatabase() {

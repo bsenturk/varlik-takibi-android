@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.notifications.AppNotificationManager
 import com.xptlabs.varliktakibi.presentation.components.GradientButton
@@ -31,9 +32,31 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val uiState by viewModel.uiState.collectAsState()
 
-    // Settings items - moved inside composable
+    // Real-time notification permission kontrolü
+    var isNotificationEnabled by remember {
+        mutableStateOf(viewModel.notificationManager.areNotificationsEnabled())
+    }
+
+    // Lifecycle-aware permission check
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                // Uygulama resume olduğunda notification durumunu kontrol et
+                isNotificationEnabled = viewModel.notificationManager.areNotificationsEnabled()
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Settings items
     val settingsItems = remember {
         listOf(
             SettingsItem(
@@ -48,7 +71,7 @@ fun SettingsScreen(
                 icon = Icons.Default.Notifications,
                 iconColor = Color(0xFF8B5CF6), // Purple
                 title = "Bildirim Tercihleri",
-                subtitle = "Bildirim tercihlerinizi yönetin"
+                subtitle = if (isNotificationEnabled) "Bildirimler açık" else "Bildirimler kapalı"
             ),
             SettingsItem(
                 type = SettingsItemType.RATE_APP,
@@ -83,6 +106,7 @@ fun SettingsScreen(
 
     // Dialog states
     var showDarkModeDialog by remember { mutableStateOf(false) }
+    var showNotificationDialog by remember { mutableStateOf(false) }
     var showRateAppDialog by remember { mutableStateOf(false) }
     var showFeedbackDialog by remember { mutableStateOf(false) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
@@ -107,7 +131,7 @@ fun SettingsScreen(
             // Debug section only in debug builds
             if (BuildConfig.DEBUG) {
                 item {
-                    DebugSection(viewModel = viewModel)
+                    DebugSection(viewModel = viewModel, isNotificationEnabled = isNotificationEnabled)
                 }
             }
 
@@ -115,10 +139,11 @@ fun SettingsScreen(
             items(settingsItems) { item ->
                 SettingsItemCard(
                     item = item,
+                    isNotificationEnabled = if (item.type == SettingsItemType.NOTIFICATIONS) isNotificationEnabled else null,
                     onClick = {
                         when (item.type) {
                             SettingsItemType.DARK_MODE -> showDarkModeDialog = true
-                            SettingsItemType.NOTIFICATIONS -> viewModel.openNotificationSettings(context)
+                            SettingsItemType.NOTIFICATIONS -> showNotificationDialog = true
                             SettingsItemType.RATE_APP -> showRateAppDialog = true
                             SettingsItemType.FEEDBACK -> showFeedbackDialog = true
                             SettingsItemType.SHARE -> showShareDialog = true
@@ -149,6 +174,21 @@ fun SettingsScreen(
                 showDarkModeDialog = false
             },
             onDismiss = { showDarkModeDialog = false }
+        )
+    }
+
+    if (showNotificationDialog) {
+        NotificationSettingsDialog(
+            isEnabled = isNotificationEnabled,
+            onOpenSettings = {
+                showNotificationDialog = false
+                viewModel.openNotificationSettings(context)
+            },
+            onSendTest = {
+                showNotificationDialog = false
+                viewModel.sendTestNotification()
+            },
+            onDismiss = { showNotificationDialog = false }
         )
     }
 
@@ -194,6 +234,7 @@ fun SettingsScreen(
 @Composable
 private fun SettingsItemCard(
     item: SettingsItem,
+    isNotificationEnabled: Boolean? = null,
     onClick: () -> Unit
 ) {
     Card(
@@ -245,7 +286,23 @@ private fun SettingsItemCard(
                 Text(
                     text = item.subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (item.type == SettingsItemType.NOTIFICATIONS) {
+                        if (isNotificationEnabled == true) Color(0xFF4CAF50) else Color(0xFFF44336)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+
+            // Status indicator for notifications
+            if (item.type == SettingsItemType.NOTIFICATIONS) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isNotificationEnabled == true) Color(0xFF4CAF50) else Color(0xFFF44336)
+                        )
                 )
             }
 
@@ -291,12 +348,9 @@ private fun AppInfoSection() {
     }
 }
 
-// SettingsScreen.kt dosyasına Debug section'a şunu ekleyin:
-
 @Composable
-private fun DebugSection(viewModel: SettingsViewModel) {
+private fun DebugSection(viewModel: SettingsViewModel, isNotificationEnabled: Boolean) {
     val context = LocalContext.current
-    val notificationManager: AppNotificationManager = hiltViewModel<SettingsViewModel>().notificationManager
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -317,7 +371,7 @@ private fun DebugSection(viewModel: SettingsViewModel) {
             )
 
             Text(
-                text = "Build Type: ${BuildConfig.BUILD_TYPE}\nVersion: ${BuildConfig.VERSION_NAME}",
+                text = "Build Type: ${BuildConfig.BUILD_TYPE}\nVersion: ${BuildConfig.VERSION_NAME}\nNotifications: ${if (isNotificationEnabled) "Enabled" else "Disabled"}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -333,14 +387,14 @@ private fun DebugSection(viewModel: SettingsViewModel) {
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Clear Data")
+                    Text("Clear Data", style = MaterialTheme.typography.labelSmall)
                 }
 
                 Button(
                     onClick = { viewModel.testAnalytics() },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Test Analytics")
+                    Text("Test Analytics", style = MaterialTheme.typography.labelSmall)
                 }
             }
 
@@ -351,7 +405,7 @@ private fun DebugSection(viewModel: SettingsViewModel) {
             ) {
                 Button(
                     onClick = {
-                        notificationManager.sendTestNotification()
+                        viewModel.sendTestNotification()
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
@@ -363,25 +417,138 @@ private fun DebugSection(viewModel: SettingsViewModel) {
 
                 Button(
                     onClick = {
-                        notificationManager.cancelAllScheduledNotifications()
-                        notificationManager.scheduleNextNotification()
+                        viewModel.notificationManager.forceRegisterNotificationCapability()
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.secondary
                     )
                 ) {
-                    Text("Reset Schedule", style = MaterialTheme.typography.labelSmall)
+                    Text("Force Register", style = MaterialTheme.typography.labelSmall)
                 }
             }
 
-            Text(
-                text = "Notifications: ${if (notificationManager.areNotificationsEnabled()) "Enabled" else "Disabled"}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Button(
+                onClick = {
+                    viewModel.openNotificationSettings(context)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary
+                )
+            ) {
+                Text("Open Notification Settings", style = MaterialTheme.typography.labelSmall)
+            }
         }
     }
+}
+
+@Composable
+fun NotificationSettingsDialog(
+    isEnabled: Boolean,
+    onOpenSettings: () -> Unit,
+    onSendTest: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Notifications,
+                contentDescription = null,
+                tint = if (isEnabled) Color(0xFF4CAF50) else Color(0xFFF44336)
+            )
+        },
+        title = {
+            Text("Bildirim Ayarları")
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Status
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isEnabled) {
+                            Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        } else {
+                            Color(0xFFF44336).copy(alpha = 0.1f)
+                        }
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isEnabled) Icons.Default.CheckCircle else Icons.Default.Cancel,
+                            contentDescription = null,
+                            tint = if (isEnabled) Color(0xFF4CAF50) else Color(0xFFF44336)
+                        )
+
+                        Column {
+                            Text(
+                                text = "Durum: ${if (isEnabled) "Açık" else "Kapalı"}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            Text(
+                                text = if (isEnabled) {
+                                    "Bildirimler etkin"
+                                } else {
+                                    "Bildirimler devre dışı"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = if (isEnabled) {
+                        "Bildirimler açık! 2-3 günde bir varlık takibi hatırlatmaları alacaksınız."
+                    } else {
+                        "Bildirimleri açmak için ayarlara gidin ve 'Bildirimler' seçeneğini etkinleştirin."
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        },
+        confirmButton = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (isEnabled) {
+                    GradientButton(
+                        text = "Test Bildirimi Gönder",
+                        onClick = onSendTest,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Button(
+                    onClick = onOpenSettings,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (isEnabled) "Ayarları Değiştir" else "Ayarlara Git")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Kapat")
+            }
+        }
+    )
 }
 
 // Data classes and enums

@@ -109,7 +109,7 @@ private fun AssetsScreenWithBanner(
             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
         )
 
-        AdMobBannerAd(
+        /*AdMobBannerAd(
             adMobManager = adMobManager,
             modifier = Modifier.fillMaxWidth(),
             screenName = "assets_screen",
@@ -122,7 +122,7 @@ private fun AssetsScreenWithBanner(
             onAdClicked = {
                 // Handle ad click on Assets screen
             }
-        )
+        )*/
     }
 }
 

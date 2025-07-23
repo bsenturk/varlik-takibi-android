@@ -1,10 +1,17 @@
 package com.xptlabs.varliktakibi.data.local.entities
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.Date
 
-@Entity(tableName = "rates")
+@Entity(
+    tableName = "rates",
+    indices = [
+        Index(value = ["type"]),
+        Index(value = ["lastUpdated"])
+    ]
+)
 data class RateEntity(
     @PrimaryKey
     val id: String,

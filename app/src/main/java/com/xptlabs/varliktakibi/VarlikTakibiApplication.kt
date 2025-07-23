@@ -45,7 +45,7 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
         // Initialize AdMob
         initializeAdMob()
 
-        // Initialize Notifications
+        // Initialize Notifications - Bu önemli!
         initializeNotifications()
 
         // Setup global exception handler
@@ -88,6 +88,12 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
     }
 
     private fun initializeNotifications() {
+        // Notification channel'ı oluştur - Bu Android'e capability'yi gösterir
+        notificationManager.createNotificationChannel()
+
+        // Notification capability'sini kaydet
+        notificationManager.forceRegisterNotificationCapability()
+
         // Schedule first notification on app start
         notificationManager.scheduleNextNotification()
 
@@ -95,7 +101,8 @@ class VarlikTakibiApplication : Application(), Configuration.Provider {
         analyticsManager.logCustomEvent(
             eventName = "notification_system_initialized",
             parameters = mapOf(
-                "notifications_enabled" to notificationManager.areNotificationsEnabled()
+                "notifications_enabled" to notificationManager.areNotificationsEnabled(),
+                "app_start" to true
             )
         )
     }

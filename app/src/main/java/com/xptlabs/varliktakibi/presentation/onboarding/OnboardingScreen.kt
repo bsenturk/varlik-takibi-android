@@ -2,6 +2,8 @@ package com.xptlabs.varliktakibi.presentation.onboarding
 
 import android.Manifest
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -43,14 +45,25 @@ fun OnboardingScreen(
 ) {
     val context = LocalContext.current
     var currentStep by remember { mutableIntStateOf(0) }
-    var showNotificationPermission by remember { mutableStateOf(false) }
+    var showNotificationDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
-    // Notification permission state (Android 13+)
+    // Manual permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        android.util.Log.d("OnboardingScreen", "Permission result: $isGranted")
+        // İzin verilsin ya da verilmesin, onboarding'i tamamla
+        viewModel.setOnboardingCompleted()
+        onOnboardingComplete()
+    }
+
+    // Notification permission state (backup)
     val notificationPermissionState = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
         rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
     } else null
 
-    // Onboarding steps - iOS'taki gibi
+    // Onboarding steps
     val steps = remember {
         listOf(
             OnboardingStep(
@@ -79,64 +92,138 @@ fun OnboardingScreen(
                     Color(0xFFFF9800), // Orange
                     Color(0xFFF44336)  // Red
                 )
+            ),
+            // 4. step olarak notification permission ekle
+            OnboardingStep(
+                icon = "notifications",
+                title = "Bildirim İzni",
+                description = "Varlıklarınızı takip etmenizi hatırlatmak ve güncel kur bilgileri için bildirim gönderebilir miyiz?",
+                gradientColors = listOf(
+                    Color(0xFF9C27B0), // Purple
+                    Color(0xFF673AB7)  // Deep Purple
+                )
             )
         )
     }
 
-    // Permission check effect
-    LaunchedEffect(showNotificationPermission) {
-        if (showNotificationPermission) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                if (notificationPermissionState?.status?.isGranted == true) {
-                    // Permission already granted, complete onboarding
+    // Permission step kontrolü
+    val isPermissionStep = currentStep == steps.size - 1 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+
+    OnboardingStepScreen(
+        step = steps[currentStep],
+        currentStep = currentStep,
+        totalSteps = steps.size,
+        isPermissionStep = isPermissionStep,
+        onNext = {
+            if (currentStep < steps.size - 1) {
+                currentStep++
+            } else {
+                // Son step - permission iste veya tamamla
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && isPermissionStep) {
+                    requestNotificationPermission(permissionLauncher, showSettingsDialog = { showSettingsDialog = true })
+                } else {
                     viewModel.setOnboardingCompleted()
                     onOnboardingComplete()
                 }
-            } else {
-                // No permission needed for older versions
+            }
+        },
+        onSkip = {
+            if (currentStep == steps.size - 1) {
+                // Son step'i atla
                 viewModel.setOnboardingCompleted()
                 onOnboardingComplete()
+            } else {
+                // Permission step'e atla
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    currentStep = steps.size - 1
+                } else {
+                    viewModel.setOnboardingCompleted()
+                    onOnboardingComplete()
+                }
             }
-        }
-    }
+        },
+        onPermissionRequest = {
+            requestNotificationPermission(permissionLauncher, showSettingsDialog = { showSettingsDialog = true })
+        },
+        isLastStep = currentStep == steps.size - 1
+    )
 
-    if (showNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        // Show notification permission screen
-        NotificationPermissionScreen(
-            onPermissionResult = { granted ->
+    // Settings Dialog
+    if (showSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showSettingsDialog = false
+                // Dialog kapandığında onboarding'i tamamla
                 viewModel.setOnboardingCompleted()
                 onOnboardingComplete()
             },
-            permissionState = notificationPermissionState!!
-        )
-    } else {
-        // Show main onboarding steps
-        OnboardingStepScreen(
-            step = steps[currentStep],
-            currentStep = currentStep,
-            totalSteps = steps.size,
-            onNext = {
-                if (currentStep < steps.size - 1) {
-                    currentStep++
-                } else {
-                    // Last step - check if we need notification permission
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        showNotificationPermission = true
-                    } else {
-                        viewModel.setOnboardingCompleted()
-                        onOnboardingComplete()
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = {
+                Text("Bildirim İzni")
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Bildirimleri etkinleştirmek için uygulama ayarlarından bildirim iznini manuel olarak açabilirsiniz.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "Nasıl Açılır:",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            Text(
+                                text = "Ayarlar → Bildirimler → Açık",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                     }
                 }
             },
-            onSkip = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    showNotificationPermission = true
-                } else {
-                    viewModel.setOnboardingCompleted()
-                    onOnboardingComplete()
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSettingsDialog = false
+                        PermissionHelper.openNotificationSettings(context)
+                        // Ayarlara gittikten sonra onboarding'i tamamla
+                        viewModel.setOnboardingCompleted()
+                        onOnboardingComplete()
+                    }
+                ) {
+                    Text("Ayarlara Git")
                 }
             },
-            isLastStep = currentStep == steps.size - 1
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showSettingsDialog = false
+                        viewModel.setOnboardingCompleted()
+                        onOnboardingComplete()
+                    }
+                ) {
+                    Text("Şimdilik Atla")
+                }
+            }
         )
     }
 }
@@ -146,8 +233,10 @@ private fun OnboardingStepScreen(
     step: OnboardingStep,
     currentStep: Int,
     totalSteps: Int,
+    isPermissionStep: Boolean,
     onNext: () -> Unit,
     onSkip: () -> Unit,
+    onPermissionRequest: () -> Unit,
     isLastStep: Boolean
 ) {
     val iconScale by animateFloatAsState(
@@ -169,7 +258,7 @@ private fun OnboardingStepScreen(
         ) {
             Spacer(modifier = Modifier.height(80.dp))
 
-            // Icon with gradient background - iOS style
+            // Icon with gradient background
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -192,6 +281,7 @@ private fun OnboardingStepScreen(
                     "wallet_pass_fill" -> Icons.Default.AccountBalanceWallet
                     "add_circle_fill" -> Icons.Default.Add
                     "trending_up" -> Icons.Default.TrendingUp
+                    "notifications" -> Icons.Default.Notifications
                     else -> Icons.Default.Star
                 }
 
@@ -234,7 +324,48 @@ private fun OnboardingStepScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(60.dp))
+            // Permission benefits (sadece permission step'inde göster)
+            if (isPermissionStep) {
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Bildirimlerle neler yapabilirsiniz:",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        PermissionBenefit(
+                            icon = Icons.Default.TrendingUp,
+                            text = "Güncel kur bilgilendirmeleri"
+                        )
+
+                        PermissionBenefit(
+                            icon = Icons.Default.AccountBalanceWallet,
+                            text = "Portföy değer değişiklikleri"
+                        )
+
+                        PermissionBenefit(
+                            icon = Icons.Default.Info,
+                            text = "Önemli piyasa haberleri"
+                        )
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(60.dp))
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Step Indicators - iOS style dots
             Row(
@@ -265,158 +396,28 @@ private fun OnboardingStepScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 GradientButton(
-                    text = if (isLastStep) "Devam Et" else "Devam Et",
-                    onClick = onNext,
+                    text = when {
+                        isPermissionStep -> "İzin Ver"
+                        isLastStep -> "Başlayalım"
+                        else -> "Devam Et"
+                    },
+                    onClick = if (isPermissionStep) onPermissionRequest else onNext,
                     gradient = Brush.horizontalGradient(step.gradientColors)
                 )
 
-                if (!isLastStep) {
-                    TextButton(
-                        onClick = onSkip,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Atla",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-        }
-    }
-}
-
-@OptIn(ExperimentalPermissionsApi::class)
-@Composable
-private fun NotificationPermissionScreen(
-    onPermissionResult: (Boolean) -> Unit,
-    permissionState: com.google.accompanist.permissions.PermissionState
-) {
-    val context = LocalContext.current
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                        MaterialTheme.colorScheme.background
-                    )
-                )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(24.dp)
-        ) {
-            // Icon
-            IconWithBackground(
-                icon = Icons.Default.Notifications,
-                contentDescription = "Notifications",
-                size = 80.dp,
-                iconSize = 40.dp,
-                colors = listOf(
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.secondary
-                )
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Content
-            Text(
-                text = "Bildirim İzni",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Varlıklarınızı takip etmenizi hatırlatmak ve güncel kur bilgileri için bildirim gönderebilir miyiz?",
-                style = MaterialTheme.typography.bodyLarge,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 20.dp)
-            )
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Permission benefits
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "Bildirimlerle neler yapabilirsiniz:",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    PermissionBenefit(
-                        icon = Icons.Default.TrendingUp,
-                        text = "Güncel kur bilgilendirmeleri"
-                    )
-
-                    PermissionBenefit(
-                        icon = Icons.Default.AccountBalanceWallet,
-                        text = "Portföy değer değişiklikleri"
-                    )
-
-                    PermissionBenefit(
-                        icon = Icons.Default.Info,
-                        text = "Önemli piyasa haberleri"
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Buttons
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                GradientButton(
-                    text = "İzin Ver",
-                    onClick = {
-                        if (permissionState.status.shouldShowRationale) {
-                            // Show rationale
-                            permissionState.launchPermissionRequest()
-                        } else {
-                            permissionState.launchPermissionRequest()
-                        }
-                    }
-                )
-
                 TextButton(
-                    onClick = { onPermissionResult(false) },
+                    onClick = onSkip,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Şimdi Değil")
+                    Text(
+                        text = if (isPermissionStep) "Şimdi Değil" else "Atla",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-        }
-    }
 
-    // Handle permission result
-    LaunchedEffect(permissionState.status) {
-        if (permissionState.status.isGranted) {
-            onPermissionResult(true)
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
@@ -442,5 +443,22 @@ private fun PermissionBenefit(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
+    }
+}
+
+// Permission request helper function
+private fun requestNotificationPermission(
+    permissionLauncher: androidx.activity.result.ActivityResultLauncher<String>,
+    showSettingsDialog: () -> Unit
+) {
+    android.util.Log.d("OnboardingScreen", "Requesting notification permission")
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        try {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } catch (e: Exception) {
+            android.util.Log.e("OnboardingScreen", "Failed to launch permission: ${e.message}")
+            showSettingsDialog()
+        }
     }
 }

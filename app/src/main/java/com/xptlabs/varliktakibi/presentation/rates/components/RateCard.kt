@@ -69,12 +69,12 @@ fun RateCard(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Alış: \n₺${rate.buyRate}",
+                        text = "Alış \n₺${rate.buyRate}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "Satış: \n₺${rate.sellRate}",
+                        text = "Satış \n₺${rate.sellRate}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

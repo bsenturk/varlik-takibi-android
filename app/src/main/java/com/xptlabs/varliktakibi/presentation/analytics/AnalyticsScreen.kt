@@ -70,11 +70,11 @@ fun AnalyticsScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Debug section only in debug builds
-            if (BuildConfig.DEBUG) {
+            /*if (BuildConfig.DEBUG) {
                 item {
                     DebugAnalyticsSection(viewModel = viewModel)
                 }
-            }
+            }*/
 
             // Total Portfolio Value Card
             item {
