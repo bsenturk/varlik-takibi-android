@@ -124,6 +124,8 @@ class MarketDataManager @Inject constructor(
             AssetType.GOLD_ATA -> "GOLD_ATA"
             AssetType.GOLD_RESAT -> "GOLD_RESAT"
             AssetType.GOLD_HAMIT -> "GOLD_HAMIT"
+            AssetType.GOLD_BESLI -> "GOLD_BESLI"
+            AssetType.SILVER -> "SILVER_GRAM"
             else -> return null
         }
 
@@ -160,7 +162,7 @@ class MarketDataManager @Inject constructor(
         return when (assetType) {
             AssetType.GOLD, AssetType.GOLD_QUARTER, AssetType.GOLD_HALF,
             AssetType.GOLD_FULL, AssetType.GOLD_REPUBLIC, AssetType.GOLD_ATA,
-            AssetType.GOLD_RESAT, AssetType.GOLD_HAMIT -> true
+            AssetType.GOLD_RESAT, AssetType.GOLD_HAMIT, AssetType.GOLD_BESLI, AssetType.SILVER -> true
             else -> false
         }
     }
@@ -182,6 +184,8 @@ class MarketDataManager @Inject constructor(
             AssetType.GOLD_ATA -> 3200.00
             AssetType.GOLD_RESAT -> 3180.25
             AssetType.GOLD_HAMIT -> 3175.50
+            AssetType.GOLD_BESLI -> 3200.00
+            AssetType.SILVER -> 40.50
             AssetType.USD -> 34.85
             AssetType.EUR -> 36.42
             AssetType.GBP -> 43.15

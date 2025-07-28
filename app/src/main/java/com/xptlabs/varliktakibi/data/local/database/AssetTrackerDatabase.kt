@@ -12,7 +12,7 @@ import com.xptlabs.varliktakibi.data.local.entities.RateEntity
 
 @Database(
     entities = [AssetEntity::class, RateEntity::class],
-    version = 3,
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

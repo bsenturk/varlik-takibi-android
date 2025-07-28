@@ -142,13 +142,14 @@ class RatesViewModel @Inject constructor(
             "GOLD_ATA" to "Ata Altın",
             "GOLD_BESLI" to "Beşli Altın",
             "GOLD_RESAT" to "Reşat Altın",
-            "GOLD_HAMIT" to "Hamit Altın"
+            "GOLD_HAMIT" to "Hamit Altın",
+            "SILVER_GRAM" to "Gram Gümüş"
         )
 
         // Sabit sıralama: istenen sırayla
         val goldOrder = listOf(
             "GOLD_GRAM", "GOLD_QUARTER", "GOLD_HALF", "GOLD_FULL",
-            "GOLD_REPUBLIC", "GOLD_ATA", "GOLD_BESLI", "GOLD_RESAT", "GOLD_HAMIT"
+            "GOLD_REPUBLIC", "GOLD_ATA", "GOLD_BESLI", "GOLD_RESAT", "GOLD_HAMIT", "SILVER_GRAM"
         )
 
         val rateMap = rates.associateBy { it.id }
@@ -160,8 +161,8 @@ class RatesViewModel @Inject constructor(
             RateDisplayModel(
                 id = rate.id,
                 title = title,
-                icon = Icons.Default.Hive,
-                iconColor = Color(0xFFFFD700),
+                icon = if(id == "SILVER_GRAM") Icons.Default.Circle else Icons.Default.Hive,
+                iconColor = if (id == "SILVER_GRAM") Color(0xFFC0C0C0) else Color(0xFFFFD700),
                 buyRate = formatPrice(rate.buyPrice),
                 sellRate = formatPrice(rate.sellPrice),
                 change = configureRateChangePercentage(rate.change),

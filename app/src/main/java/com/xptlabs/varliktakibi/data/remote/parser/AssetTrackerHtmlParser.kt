@@ -139,7 +139,7 @@ class AssetTrackerHtmlParser @Inject constructor() {
     private fun isGoldName(name: String): Boolean {
         val goldKeywords = listOf(
             "gram altın", "çeyrek altın", "yarım altın", "tam altın",
-            "cumhuriyet altını", "ata altın", "beşli altın", "hamit altın", "reşat altın"
+            "cumhuriyet altını", "ata altın", "beşli altın", "hamit altın", "reşat altın", "gram gümüş"
         )
 
         val lowercaseName = name.lowercase()
@@ -167,6 +167,7 @@ class AssetTrackerHtmlParser @Inject constructor() {
             "reşat altın" -> "GOLD_RESAT"
             "hamit altın" -> "GOLD_HAMIT"
             "beşli altın" -> "GOLD_BESLI"
+            "gram gümüş" -> "SILVER_GRAM"
             else -> "GOLD_UNKNOWN_${lowerName.replace(" ", "_")}"
         }
     }

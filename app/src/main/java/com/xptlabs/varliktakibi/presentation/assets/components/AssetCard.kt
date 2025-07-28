@@ -194,8 +194,10 @@ fun getAssetIcon(assetType: AssetType): ImageVector {
         AssetType.GOLD_REPUBLIC,
         AssetType.GOLD_ATA,
         AssetType.GOLD_RESAT,
-        AssetType.GOLD_HAMIT -> Icons.Default.Hive
+        AssetType.GOLD_HAMIT,
+        AssetType.GOLD_BESLI -> Icons.Default.Hive
 
+        AssetType.SILVER -> Icons.Default.Circle
         AssetType.EUR -> Icons.Default.Euro
         AssetType.GBP -> Icons.Default.CurrencyPound
         AssetType.TRY -> Icons.Default.CurrencyLira
@@ -212,8 +214,10 @@ fun getAssetColor(assetType: AssetType): Color {
         AssetType.GOLD_REPUBLIC,
         AssetType.GOLD_ATA,
         AssetType.GOLD_RESAT,
-        AssetType.GOLD_HAMIT -> Color(0xFFFFD700) // Gold
+        AssetType.GOLD_HAMIT,
+        AssetType.GOLD_BESLI -> Color(0xFFFFD700) // Gold
 
+        AssetType.SILVER -> Color(0xFFC0C0C0)
         AssetType.USD -> Color(0xFF4CAF50) // Green
         AssetType.EUR -> Color(0xFF2196F3) // Blue
         AssetType.GBP -> Color(0xFF9C27B0) // Purple

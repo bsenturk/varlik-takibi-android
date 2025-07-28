@@ -37,6 +37,8 @@ enum class AssetType(val displayName: String, val unit: String) {
     GOLD_ATA("Ata Altın", "adet"),
     GOLD_RESAT("Reşat Altın", "adet"),
     GOLD_HAMIT("Hamit Altın", "adet"),
+    GOLD_BESLI("Beşli Altın", "adet"),
+    SILVER("Gram Gümüş", "gram"),
     USD("Dolar", "USD"),
     EUR("Euro", "EUR"),
     GBP("Sterlin", "GBP"),

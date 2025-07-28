@@ -178,6 +178,8 @@ class AnalyticsViewModel @Inject constructor(
             AssetType.GOLD_ATA -> 3200.0
             AssetType.GOLD_RESAT -> 3180.0
             AssetType.GOLD_HAMIT -> 3175.0
+            AssetType.GOLD_BESLI -> 3200.00
+            AssetType.SILVER -> 40.50
             AssetType.USD -> 34.5
             AssetType.EUR -> 38.0
             AssetType.GBP -> 43.0
@@ -335,8 +337,10 @@ class AnalyticsViewModel @Inject constructor(
             AssetType.GOLD_REPUBLIC,
             AssetType.GOLD_ATA,
             AssetType.GOLD_RESAT,
-            AssetType.GOLD_HAMIT -> Color(0xFFFFD700) // Gold
+            AssetType.GOLD_HAMIT,
+            AssetType.GOLD_BESLI -> Color(0xFFFFD700) // Gold
 
+            AssetType.SILVER -> Color(0xFFC0C0C0)
             AssetType.USD -> Color(0xFF4CAF50) // Green
             AssetType.EUR -> Color(0xFF2196F3) // Blue
             AssetType.GBP -> Color(0xFF9C27B0) // Purple

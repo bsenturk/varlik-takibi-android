@@ -1,5 +1,6 @@
 package com.xptlabs.varliktakibi.presentation.assets
 
+import android.content.Intent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -21,9 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ComponentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.google.accompanist.swiperefresh.SwipeRefresh
@@ -35,6 +38,7 @@ import com.xptlabs.varliktakibi.presentation.assets.components.AssetFormDialog
 import com.xptlabs.varliktakibi.presentation.assets.components.AssetCard
 import com.xptlabs.varliktakibi.presentation.navigation.Screen
 import com.xptlabs.varliktakibi.BuildConfig
+import com.xptlabs.varliktakibi.MainActivity
 import kotlin.math.abs
 
 // AssetsScreen.kt dosyasının başındaki composable fonksiyonu şu şekilde güncelleyin:

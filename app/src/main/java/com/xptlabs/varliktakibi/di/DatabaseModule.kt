@@ -33,7 +33,7 @@ object DatabaseModule {
             builder.fallbackToDestructiveMigration()
                 .allowMainThreadQueries()
         } else {
-            builder.fallbackToDestructiveMigration()
+            builder.fallbackToDestructiveMigrationFrom(1, 2, 3, 4)
                 .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .enableMultiInstanceInvalidation()
         }
