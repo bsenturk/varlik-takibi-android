@@ -35,7 +35,7 @@ class RateRepositoryImpl @Inject constructor(
             Log.d(TAG, "Refreshing all rates from unified Finance API")
             val result = refreshAllRatesFromApi()
 
-            if (result.isSuccess) {
+            return if (result.isSuccess) {
                 val allRates = result.getOrNull() ?: emptyList()
                 val goldRates = allRates.filter { it.type == "GOLD" || it.type == "SILVER" }
                 val currencyRates = allRates.filter { it.type == "CURRENCY" }
