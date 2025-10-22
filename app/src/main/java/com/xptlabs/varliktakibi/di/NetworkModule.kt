@@ -25,7 +25,7 @@ object NetworkModule {
     @Singleton
     fun provideHttpLoggingInterceptor(): HttpLoggingInterceptor {
         return HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.HEADERS // Sadece header'ları logla
+            level = HttpLoggingInterceptor.Level.BODY // Full logging for debugging
         }
     }
 
