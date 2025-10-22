@@ -116,21 +116,21 @@ class MarketDataManager @Inject constructor(
         Log.d(TAG, "Looking for gold rate in ${goldRates.size} rates for $assetType")
 
         val goldId = when (assetType) {
-            AssetType.GOLD -> "GOLD_GRAM"
-            AssetType.GOLD_QUARTER -> "GOLD_QUARTER"
-            AssetType.GOLD_HALF -> "GOLD_HALF"
-            AssetType.GOLD_FULL -> "GOLD_FULL"
-            AssetType.GOLD_REPUBLIC -> "GOLD_REPUBLIC"
-            AssetType.GOLD_ATA -> "GOLD_ATA"
-            AssetType.GOLD_RESAT -> "GOLD_RESAT"
-            AssetType.GOLD_HAMIT -> "GOLD_HAMIT"
-            AssetType.GOLD_BESLI -> "GOLD_BESLI"
-            AssetType.GOLD_GREMSE -> "GOLD_GREMSE"
-            AssetType.GOLD_14_CARAT -> "GOLD_14_CARAT"
-            AssetType.GOLD_18_CARAT -> "GOLD_18_CARAT"
-            AssetType.GOLD_TWO_HALF -> "GOLD_TWO_HALF"
-            AssetType.GOLD_22_CARAT_BRACELET -> "GOLD_22_CARAT_BRACELET"
-            AssetType.SILVER -> "SILVER_GRAM"
+            AssetType.GOLD -> "GRA"
+            AssetType.GOLD_QUARTER -> "CEYREK"
+            AssetType.GOLD_HALF -> "YARIM"
+            AssetType.GOLD_FULL -> "TAM"
+            AssetType.GOLD_REPUBLIC -> "CUMHURIYET"
+            AssetType.GOLD_ATA -> "ATA"
+            AssetType.GOLD_RESAT -> "RESAT"
+            AssetType.GOLD_HAMIT -> "HAMIT"
+            AssetType.GOLD_BESLI -> "BESLI"
+            AssetType.GOLD_GREMSE -> "GREMSE"
+            AssetType.GOLD_14_CARAT -> "14AYAR"
+            AssetType.GOLD_18_CARAT -> "18AYAR"
+            AssetType.GOLD_TWO_HALF -> "IKIbucuk"
+            AssetType.GOLD_22_CARAT_BRACELET -> "22AYAR"
+            AssetType.SILVER -> "GUMUS"
             else -> return null
         }
 

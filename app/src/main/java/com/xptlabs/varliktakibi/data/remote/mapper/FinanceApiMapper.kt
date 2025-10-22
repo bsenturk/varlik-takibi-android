@@ -47,7 +47,7 @@ object FinanceApiMapper {
         val changePercent = calculateChangePercent()
 
         return RateEntity(
-            id = UUID.randomUUID().toString(),
+            id = code,  // Use code as ID so MarketDataManager can find it
             name = name,
             type = type,
             buyPrice = buying,

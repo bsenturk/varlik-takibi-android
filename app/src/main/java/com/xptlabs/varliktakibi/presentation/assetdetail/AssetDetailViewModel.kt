@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -46,36 +47,35 @@ class AssetDetailViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(isLoading = true)
 
             try {
-                // Load asset
-                assetRepository.getAllAssets().collect { assets ->
-                    val asset = assets.find { it.id == assetId }
+                // Load asset (use first() to get single value, not collect)
+                val assets = assetRepository.getAllAssets().first()
+                val asset = assets.find { it.id == assetId }
 
-                    if (asset != null) {
-                        // Load price history (last 30 days)
-                        val priceHistory = historyManager.getPriceHistory(assetId, 30)
+                if (asset != null) {
+                    // Load price history (last 30 days)
+                    val priceHistory = historyManager.getPriceHistory(assetId, 30)
 
-                        // Load transaction history (max 10 recent)
-                        val transactionHistory = historyManager.getRecentTransactions(assetId, 10)
+                    // Load transaction history (max 10 recent)
+                    val transactionHistory = historyManager.getRecentTransactions(assetId, 10)
 
-                        _uiState.value = _uiState.value.copy(
-                            asset = asset,
-                            priceHistory = priceHistory,
-                            transactionHistory = transactionHistory,
-                            isLoading = false
-                        )
+                    _uiState.value = _uiState.value.copy(
+                        asset = asset,
+                        priceHistory = priceHistory,
+                        transactionHistory = transactionHistory,
+                        isLoading = false
+                    )
 
-                        // Update chart data with initial period
-                        updateChartData(_uiState.value.selectedChartPeriod)
+                    // Update chart data with initial period
+                    updateChartData(_uiState.value.selectedChartPeriod)
 
-                        Log.d("AssetDetailViewModel", "Loaded asset: ${asset.name}")
-                        Log.d("AssetDetailViewModel", "Price history records: ${priceHistory.size}")
-                        Log.d("AssetDetailViewModel", "Transaction history records: ${transactionHistory.size}")
-                    } else {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            errorMessage = "Varlık bulunamadı"
-                        )
-                    }
+                    Log.d("AssetDetailViewModel", "Loaded asset: ${asset.name}")
+                    Log.d("AssetDetailViewModel", "Price history records: ${priceHistory.size}")
+                    Log.d("AssetDetailViewModel", "Transaction history records: ${transactionHistory.size}")
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = "Varlık bulunamadı"
+                    )
                 }
             } catch (e: Exception) {
                 Log.e("AssetDetailViewModel", "Error loading asset detail", e)
