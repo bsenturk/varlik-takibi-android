@@ -5,10 +5,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.xptlabs.varliktakibi.ads.AdMobManager
 import com.xptlabs.varliktakibi.presentation.analytics.AnalyticsScreen
+import com.xptlabs.varliktakibi.presentation.assetdetail.AssetDetailScreen
 import com.xptlabs.varliktakibi.presentation.main.MainTabView
 import com.xptlabs.varliktakibi.presentation.onboarding.OnboardingScreen
 import com.xptlabs.varliktakibi.presentation.splash.SplashScreen
@@ -61,6 +64,20 @@ fun AssetTrackerNavHost(
         // Analytics Screen
         composable(Screen.Analytics.route) {
             AnalyticsScreen(navController = navController)
+        }
+
+        // Asset Detail Screen
+        composable(
+            route = Screen.AssetDetail.route,
+            arguments = listOf(
+                navArgument("assetId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val assetId = backStackEntry.arguments?.getString("assetId") ?: ""
+            AssetDetailScreen(
+                assetId = assetId,
+                navController = navController
+            )
         }
     }
 }

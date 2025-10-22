@@ -27,6 +27,7 @@ fun AssetCard(
     asset: Asset,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -37,6 +38,7 @@ fun AssetCard(
     )
 
     Card(
+        onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .scale(scale),

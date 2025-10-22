@@ -138,4 +138,7 @@ dependencies {
 
     // AdMob
     implementation(libs.play.services.ads)
+
+    // Vico Charts
+    implementation(libs.bundles.vico)
 }

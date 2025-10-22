@@ -114,6 +114,9 @@ fun AssetsScreen(
                     AssetListView(
                         assets = uiState.assets,
                         isRefreshing = uiState.isRefreshing,
+                        onAssetClick = { asset ->
+                            navController.navigate(Screen.AssetDetail.createRoute(asset.id))
+                        },
                         onEditAsset = { asset ->
                             editingAsset = asset
                         },
@@ -445,6 +448,7 @@ private fun EmptyStateView(
 private fun AssetListView(
     assets: List<Asset>,
     isRefreshing: Boolean,
+    onAssetClick: (Asset) -> Unit,
     onEditAsset: (Asset) -> Unit,
     onDeleteAsset: (Asset) -> Unit,
     onRefresh: () -> Unit
@@ -486,6 +490,7 @@ private fun AssetListView(
             ) { asset ->
                 AssetCard(
                     asset = asset,
+                    onClick = { onAssetClick(asset) },
                     onEdit = { onEditAsset(asset) },
                     onDelete = { onDeleteAsset(asset) }
                 )
