@@ -46,13 +46,15 @@ object FinanceApiMapper {
     private fun CommonRateDto.toRateEntity(code: String, type: String): RateEntity {
         val changeValue = change ?: 0.0
         val sellingValue = selling ?: 0.0
+        val buyingValue = buying ?: 0.0
+        val nameValue = this.name ?: code  // Explicit this.name and assign to variable
         val changePercent = calculateChangePercent()
 
         return RateEntity(
             id = code,  // Use code as ID so MarketDataManager can find it
-            name = name ?: code,  // Fallback to code if name is null
+            name = nameValue,  // Use the non-null variable
             type = type,
-            buyPrice = buying ?: 0.0,
+            buyPrice = buyingValue,
             sellPrice = sellingValue,
             change = changeValue,
             changePercent = changePercent,
