@@ -125,6 +125,11 @@ class MarketDataManager @Inject constructor(
             AssetType.GOLD_RESAT -> "GOLD_RESAT"
             AssetType.GOLD_HAMIT -> "GOLD_HAMIT"
             AssetType.GOLD_BESLI -> "GOLD_BESLI"
+            AssetType.GOLD_GREMSE -> "GOLD_GREMSE"
+            AssetType.GOLD_14_CARAT -> "GOLD_14_CARAT"
+            AssetType.GOLD_18_CARAT -> "GOLD_18_CARAT"
+            AssetType.GOLD_TWO_HALF -> "GOLD_TWO_HALF"
+            AssetType.GOLD_22_CARAT_BRACELET -> "GOLD_22_CARAT_BRACELET"
             AssetType.SILVER -> "SILVER_GRAM"
             else -> return null
         }
@@ -162,7 +167,9 @@ class MarketDataManager @Inject constructor(
         return when (assetType) {
             AssetType.GOLD, AssetType.GOLD_QUARTER, AssetType.GOLD_HALF,
             AssetType.GOLD_FULL, AssetType.GOLD_REPUBLIC, AssetType.GOLD_ATA,
-            AssetType.GOLD_RESAT, AssetType.GOLD_HAMIT, AssetType.GOLD_BESLI, AssetType.SILVER -> true
+            AssetType.GOLD_RESAT, AssetType.GOLD_HAMIT, AssetType.GOLD_BESLI,
+            AssetType.GOLD_GREMSE, AssetType.GOLD_14_CARAT, AssetType.GOLD_18_CARAT,
+            AssetType.GOLD_TWO_HALF, AssetType.GOLD_22_CARAT_BRACELET, AssetType.SILVER -> true
             else -> false
         }
     }
@@ -185,6 +192,11 @@ class MarketDataManager @Inject constructor(
             AssetType.GOLD_RESAT -> 3180.25
             AssetType.GOLD_HAMIT -> 3175.50
             AssetType.GOLD_BESLI -> 3200.00
+            AssetType.GOLD_GREMSE -> 3180.00
+            AssetType.GOLD_14_CARAT -> 2400.00
+            AssetType.GOLD_18_CARAT -> 2600.00
+            AssetType.GOLD_TWO_HALF -> 1580.00
+            AssetType.GOLD_22_CARAT_BRACELET -> 2700.00
             AssetType.SILVER -> 40.50
             AssetType.USD -> 34.85
             AssetType.EUR -> 36.42

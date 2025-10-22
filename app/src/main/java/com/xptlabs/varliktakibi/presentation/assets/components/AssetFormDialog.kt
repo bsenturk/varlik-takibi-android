@@ -345,7 +345,12 @@ private fun getFormAssetIcon(assetType: AssetType): androidx.compose.ui.graphics
         AssetType.GOLD_ATA,
         AssetType.GOLD_RESAT,
         AssetType.GOLD_HAMIT,
-        AssetType.GOLD_BESLI -> Icons.Default.Hive
+        AssetType.GOLD_BESLI,
+        AssetType.GOLD_GREMSE,
+        AssetType.GOLD_14_CARAT,
+        AssetType.GOLD_18_CARAT,
+        AssetType.GOLD_TWO_HALF,
+        AssetType.GOLD_22_CARAT_BRACELET -> Icons.Default.Hive
 
         AssetType.SILVER -> Icons.Default.Circle
         AssetType.USD -> Icons.Default.AttachMoney
@@ -366,7 +371,12 @@ private fun getFormAssetColor(assetType: AssetType): androidx.compose.ui.graphic
         AssetType.GOLD_ATA,
         AssetType.GOLD_RESAT,
         AssetType.GOLD_HAMIT,
-        AssetType.GOLD_BESLI -> Color(0xFFFFD700) // Altın rengi
+        AssetType.GOLD_BESLI,
+        AssetType.GOLD_GREMSE,
+        AssetType.GOLD_14_CARAT,
+        AssetType.GOLD_18_CARAT,
+        AssetType.GOLD_TWO_HALF,
+        AssetType.GOLD_22_CARAT_BRACELET -> Color(0xFFFFD700) // Altın rengi
 
         AssetType.SILVER -> Color(0xFFC0C0C0)
         AssetType.USD -> Color(0xFF4CAF50) // Yeşil

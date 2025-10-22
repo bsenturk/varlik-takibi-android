@@ -195,7 +195,12 @@ fun getAssetIcon(assetType: AssetType): ImageVector {
         AssetType.GOLD_ATA,
         AssetType.GOLD_RESAT,
         AssetType.GOLD_HAMIT,
-        AssetType.GOLD_BESLI -> Icons.Default.Hive
+        AssetType.GOLD_BESLI,
+        AssetType.GOLD_GREMSE,
+        AssetType.GOLD_14_CARAT,
+        AssetType.GOLD_18_CARAT,
+        AssetType.GOLD_TWO_HALF,
+        AssetType.GOLD_22_CARAT_BRACELET -> Icons.Default.Hive
 
         AssetType.SILVER -> Icons.Default.Circle
         AssetType.EUR -> Icons.Default.Euro
@@ -215,7 +220,12 @@ fun getAssetColor(assetType: AssetType): Color {
         AssetType.GOLD_ATA,
         AssetType.GOLD_RESAT,
         AssetType.GOLD_HAMIT,
-        AssetType.GOLD_BESLI -> Color(0xFFFFD700) // Gold
+        AssetType.GOLD_BESLI,
+        AssetType.GOLD_GREMSE,
+        AssetType.GOLD_14_CARAT,
+        AssetType.GOLD_18_CARAT,
+        AssetType.GOLD_TWO_HALF,
+        AssetType.GOLD_22_CARAT_BRACELET -> Color(0xFFFFD700) // Gold
 
         AssetType.SILVER -> Color(0xFFC0C0C0)
         AssetType.USD -> Color(0xFF4CAF50) // Green
