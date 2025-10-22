@@ -13,13 +13,21 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.*
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+
+data class ChartDataPoint(
+    val timestamp: Long,
+    val value: Double
+)
 
 data class AssetDetailUiState(
     val asset: Asset? = null,
     val priceHistory: List<AssetPriceHistoryEntity> = emptyList(),
     val transactionHistory: List<AssetTransactionHistoryEntity> = emptyList(),
     val selectedChartPeriod: ChartPeriod = ChartPeriod.WEEKLY,
+    val chartData: List<ChartDataPoint> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -56,6 +64,9 @@ class AssetDetailViewModel @Inject constructor(
                             isLoading = false
                         )
 
+                        // Update chart data with initial period
+                        updateChartData(_uiState.value.selectedChartPeriod)
+
                         Log.d("AssetDetailViewModel", "Loaded asset: ${asset.name}")
                         Log.d("AssetDetailViewModel", "Price history records: ${priceHistory.size}")
                         Log.d("AssetDetailViewModel", "Transaction history records: ${transactionHistory.size}")
@@ -78,6 +89,27 @@ class AssetDetailViewModel @Inject constructor(
 
     fun setChartPeriod(period: ChartPeriod) {
         _uiState.value = _uiState.value.copy(selectedChartPeriod = period)
+        updateChartData(period)
         Log.d("AssetDetailViewModel", "Chart period changed to: ${period.label}")
+    }
+
+    private fun updateChartData(period: ChartPeriod) {
+        val priceHistory = _uiState.value.priceHistory
+        if (priceHistory.isEmpty()) return
+
+        val now = System.currentTimeMillis()
+        val cutoffTime = when (period) {
+            ChartPeriod.DAILY -> now - TimeUnit.DAYS.toMillis(1)
+            ChartPeriod.WEEKLY -> now - TimeUnit.DAYS.toMillis(7)
+            ChartPeriod.MONTHLY -> now - TimeUnit.DAYS.toMillis(30)
+        }
+
+        val filteredData = priceHistory
+            .filter { it.date.time >= cutoffTime }
+            .sortedBy { it.date.time }
+            .map { ChartDataPoint(it.date.time, it.totalValue) }
+
+        _uiState.value = _uiState.value.copy(chartData = filteredData)
+        Log.d("AssetDetailViewModel", "Chart data updated: ${filteredData.size} points")
     }
 }
