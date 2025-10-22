@@ -19,15 +19,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.xptlabs.varliktakibi.data.local.entities.TransactionType
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisGuidelineComponent
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
+import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
+import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.compose.style.ProvideChartStyle
+import com.patrykandpatrick.vico.core.entry.entryModelOf
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -243,27 +240,23 @@ private fun PriceChartCard(uiState: AssetDetailUiState, viewModel: AssetDetailVi
                     )
                 }
             } else {
-                val modelProducer = remember { CartesianChartModelProducer() }
-
-                LaunchedEffect(uiState.chartData) {
-                    modelProducer.runTransaction {
-                        lineSeries {
-                            series(uiState.chartData.map { it.value })
-                        }
-                    }
+                val chartEntryModel = remember(uiState.chartData) {
+                    entryModelOf(*uiState.chartData.mapIndexed { index, point ->
+                        index.toFloat() to point.value.toFloat()
+                    }.toTypedArray())
                 }
 
-                CartesianChartHost(
-                    chart = rememberCartesianChart(
-                        rememberLineCartesianLayer(),
-                        startAxis = rememberStart(),
-                        bottomAxis = rememberBottom()
-                    ),
-                    modelProducer = modelProducer,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                )
+                ProvideChartStyle {
+                    Chart(
+                        chart = lineChart(),
+                        model = chartEntryModel,
+                        startAxis = rememberStartAxis(),
+                        bottomAxis = rememberBottomAxis(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                    )
+                }
             }
         }
     }

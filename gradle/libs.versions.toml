@@ -36,7 +36,7 @@ play-services-ads = "24.0.0"
 core-splashscreen = "1.0.1"
 
 # Charts
-vico = "2.0.0-beta.1"
+vico = "1.14.0"
 
 [libraries]
 # Core Android
