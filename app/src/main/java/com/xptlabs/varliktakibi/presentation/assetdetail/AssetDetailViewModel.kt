@@ -51,11 +51,11 @@ class AssetDetailViewModel @Inject constructor(
                     val asset = assets.find { it.id == assetId }
 
                     if (asset != null) {
-                        // Load price history
-                        val priceHistory = historyManager.getPriceHistory(assetId)
+                        // Load price history (last 30 days)
+                        val priceHistory = historyManager.getPriceHistory(assetId, 30)
 
-                        // Load transaction history
-                        val transactionHistory = historyManager.getTransactionHistory(assetId)
+                        // Load transaction history (max 10 recent)
+                        val transactionHistory = historyManager.getRecentTransactions(assetId, 10)
 
                         _uiState.value = _uiState.value.copy(
                             asset = asset,
