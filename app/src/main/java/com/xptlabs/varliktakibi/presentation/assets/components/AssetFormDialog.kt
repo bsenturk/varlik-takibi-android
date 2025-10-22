@@ -291,6 +291,7 @@ fun AssetFormDialog(
                                 unit = selectedAssetType.unit,
                                 purchasePrice = currentRate,
                                 currentPrice = currentRate,
+                                purchaseRate = currentRate, // Purchase rate equals current rate at time of purchase
                                 dateAdded = asset?.dateAdded ?: Date(),
                                 lastUpdated = Date()
                             )

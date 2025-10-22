@@ -233,13 +233,15 @@ class AssetsViewModel @Inject constructor(
 
                 if (existingAsset != null) {
                     // Update existing asset - add amounts
+                    val weightedAvgPrice = calculateWeightedAveragePrice(
+                        existingAsset.amount, existingAsset.purchasePrice,
+                        newAsset.amount, newAsset.purchasePrice
+                    )
                     val combinedAsset = existingAsset.copy(
                         amount = existingAsset.amount + newAsset.amount,
                         // Calculate weighted average purchase price
-                        purchasePrice = calculateWeightedAveragePrice(
-                            existingAsset.amount, existingAsset.purchasePrice,
-                            newAsset.amount, newAsset.purchasePrice
-                        ),
+                        purchasePrice = weightedAvgPrice,
+                        purchaseRate = weightedAvgPrice, // Update purchase rate
                         currentPrice = currentPrice,
                         lastUpdated = Date()
                     )
@@ -492,6 +494,7 @@ class AssetsViewModel @Inject constructor(
             unit = type.unit,
             purchasePrice = purchasePrice,
             currentPrice = currentPrice,
+            purchaseRate = purchasePrice, // Initial purchase rate equals purchase price
             dateAdded = Date(),
             lastUpdated = Date()
         )

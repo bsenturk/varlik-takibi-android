@@ -162,6 +162,7 @@ class AnalyticsViewModel @Inject constructor(
             unit = type.unit,
             purchasePrice = purchasePrice,
             currentPrice = getCurrentPrice(type), // Use current market price
+            purchaseRate = purchasePrice, // Purchase rate equals purchase price
             dateAdded = java.util.Date(),
             lastUpdated = java.util.Date()
         )
