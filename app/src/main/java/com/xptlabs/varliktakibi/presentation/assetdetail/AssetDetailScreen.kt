@@ -3,6 +3,7 @@ package com.xptlabs.varliktakibi.presentation.assetdetail
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.xptlabs.varliktakibi.data.local.entities.TransactionType
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -363,14 +367,107 @@ private fun TransactionHistoryCard(uiState: AssetDetailUiState) {
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             } else {
-                // Transaction history items will be added
-                Text(
-                    text = "${uiState.transactionHistory.size} işlem bulundu",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    uiState.transactionHistory.forEach { transaction ->
+                        TransactionHistoryItem(transaction)
+                        if (transaction != uiState.transactionHistory.last()) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun TransactionHistoryItem(transaction: com.xptlabs.varliktakibi.data.local.entities.AssetTransactionHistoryEntity) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            // Transaction Type Icon
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(
+                        getTransactionColor(transaction.transactionType).copy(alpha = 0.15f),
+                        CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = getTransactionIcon(transaction.transactionType),
+                    contentDescription = null,
+                    tint = getTransactionColor(transaction.transactionType),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Column {
+                Text(
+                    text = getTransactionLabel(transaction.transactionType),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = formatDate(transaction.date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = "${if (transaction.transactionType == TransactionType.ADD) "+" else if (transaction.transactionType == TransactionType.REMOVE) "-" else ""}${String.format("%.2f", transaction.amount)}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = when (transaction.transactionType) {
+                    TransactionType.ADD -> Color.Green
+                    TransactionType.REMOVE -> Color.Red
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+            )
+            Text(
+                text = "Toplam: ${String.format("%.2f", transaction.totalAmount)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun getTransactionIcon(type: TransactionType) = when (type) {
+    TransactionType.INITIAL -> Icons.Default.AddCircle
+    TransactionType.ADD -> Icons.Default.Add
+    TransactionType.REMOVE -> Icons.Default.Remove
+    TransactionType.EDIT -> Icons.Default.Edit
+}
+
+private fun getTransactionColor(type: TransactionType) = when (type) {
+    TransactionType.INITIAL -> Color(0xFF4CAF50)
+    TransactionType.ADD -> Color(0xFF2196F3)
+    TransactionType.REMOVE -> Color(0xFFF44336)
+    TransactionType.EDIT -> Color(0xFFFF9800)
+}
+
+private fun getTransactionLabel(type: TransactionType) = when (type) {
+    TransactionType.INITIAL -> "İlk Ekleme"
+    TransactionType.ADD -> "Ekleme"
+    TransactionType.REMOVE -> "Çıkarma"
+    TransactionType.EDIT -> "Düzenleme"
 }
 
 @Composable
@@ -408,14 +505,71 @@ private fun PriceHistoryCard(uiState: AssetDetailUiState) {
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             } else {
-                // Price history items will be added
-                Text(
-                    text = "${uiState.priceHistory.size} kayıt bulundu",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    uiState.priceHistory.take(10).forEach { priceRecord ->
+                        PriceHistoryItem(priceRecord)
+                        if (priceRecord != uiState.priceHistory.take(10).last()) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+
+                    if (uiState.priceHistory.size > 10) {
+                        Text(
+                            text = "+${uiState.priceHistory.size - 10} kayıt daha",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun PriceHistoryItem(priceRecord: com.xptlabs.varliktakibi.data.local.entities.AssetPriceHistoryEntity) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = formatDate(priceRecord.date),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "${String.format("%.2f", priceRecord.amount)} adet",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = formatCurrency(priceRecord.totalValue),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Birim: ${formatCurrency(priceRecord.price)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun formatDate(date: Date): String {
+    val formatter = SimpleDateFormat("dd MMM yyyy", Locale("tr"))
+    return formatter.format(date)
 }
 
 private fun formatCurrency(amount: Double): String {
