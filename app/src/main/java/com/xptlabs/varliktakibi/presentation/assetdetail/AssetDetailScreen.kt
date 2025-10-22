@@ -20,11 +20,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.xptlabs.varliktakibi.data.local.entities.TransactionType
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottomAxis
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStartAxis
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberAxisGuidelineComponent
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
+import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
+import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLine
 import com.patrykandpatrick.vico.compose.cartesian.layer.rememberLineCartesianLayer
 import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.compose.common.component.rememberLineComponent
 import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.core.cartesian.data.lineSeries
 import java.text.SimpleDateFormat
@@ -255,8 +256,8 @@ private fun PriceChartCard(uiState: AssetDetailUiState, viewModel: AssetDetailVi
                 CartesianChartHost(
                     chart = rememberCartesianChart(
                         rememberLineCartesianLayer(),
-                        startAxis = rememberStartAxis(),
-                        bottomAxis = rememberBottomAxis()
+                        startAxis = rememberStart(),
+                        bottomAxis = rememberBottom()
                     ),
                     modelProducer = modelProducer,
                     modifier = Modifier
