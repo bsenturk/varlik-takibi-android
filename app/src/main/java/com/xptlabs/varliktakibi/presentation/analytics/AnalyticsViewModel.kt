@@ -180,6 +180,11 @@ class AnalyticsViewModel @Inject constructor(
             AssetType.GOLD_RESAT -> 3180.0
             AssetType.GOLD_HAMIT -> 3175.0
             AssetType.GOLD_BESLI -> 3200.00
+            AssetType.GOLD_GREMSE -> 3180.0
+            AssetType.GOLD_14_CARAT -> 2400.0
+            AssetType.GOLD_18_CARAT -> 2600.0
+            AssetType.GOLD_TWO_HALF -> 1580.0
+            AssetType.GOLD_22_CARAT_BRACELET -> 2700.0
             AssetType.SILVER -> 40.50
             AssetType.USD -> 34.5
             AssetType.EUR -> 38.0
