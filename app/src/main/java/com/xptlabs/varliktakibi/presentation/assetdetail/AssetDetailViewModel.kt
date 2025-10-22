@@ -99,9 +99,9 @@ class AssetDetailViewModel @Inject constructor(
 
         val now = System.currentTimeMillis()
         val cutoffTime = when (period) {
-            ChartPeriod.DAILY -> now - TimeUnit.DAYS.toMillis(1)
-            ChartPeriod.WEEKLY -> now - TimeUnit.DAYS.toMillis(7)
-            ChartPeriod.MONTHLY -> now - TimeUnit.DAYS.toMillis(30)
+            ChartPeriod.DAILY -> now - TimeUnit.DAYS.toMillis(1L)
+            ChartPeriod.WEEKLY -> now - TimeUnit.DAYS.toMillis(7L)
+            ChartPeriod.MONTHLY -> now - TimeUnit.DAYS.toMillis(30L)
         }
 
         val filteredData = priceHistory
