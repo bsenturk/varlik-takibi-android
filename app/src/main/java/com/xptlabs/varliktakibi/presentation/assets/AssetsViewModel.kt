@@ -7,8 +7,10 @@ import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.models.AssetType
+import com.xptlabs.varliktakibi.domain.models.Currency
 import com.xptlabs.varliktakibi.domain.repository.AssetRepository
 import com.xptlabs.varliktakibi.managers.MarketDataManager
+import com.xptlabs.varliktakibi.utils.CurrencyConverter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -26,7 +28,8 @@ data class AssetsUiState(
     val totalInvestment: Double = 0.0,
     val profitLoss: Double = 0.0,
     val profitLossPercentage: Double = 0.0,
-    val hasDataLoaded: Boolean = false
+    val hasDataLoaded: Boolean = false,
+    val selectedCurrency: Currency = Currency.TRY
 )
 
 @HiltViewModel
@@ -505,20 +508,52 @@ class AssetsViewModel @Inject constructor(
             return PortfolioData()
         }
 
-        val totalValue = assets.sumOf { it.totalValue }
-        val totalInvestment = assets.sumOf { it.totalInvestment }
-        val profitLoss = totalValue - totalInvestment
-        val profitLossPercentage = if (totalInvestment > 0) {
-            (profitLoss / totalInvestment) * 100
+        // Calculate in TRY first
+        val totalValueTRY = assets.sumOf { it.totalValue }
+        val totalInvestmentTRY = assets.sumOf { it.totalInvestment }
+        val profitLossTRY = totalValueTRY - totalInvestmentTRY
+        val profitLossPercentage = if (totalInvestmentTRY > 0) {
+            (profitLossTRY / totalInvestmentTRY) * 100
         } else 0.0
 
-        Log.d(TAG, "Portfolio calculated - Value: $totalValue, Investment: $totalInvestment, P/L: $profitLoss")
+        // Convert to selected currency
+        val selectedCurrency = _uiState.value.selectedCurrency
+        val currencyRates = marketDataManager.currencyRates.value
+
+        val totalValue = CurrencyConverter.convertToTargetCurrency(totalValueTRY, selectedCurrency, currencyRates)
+        val totalInvestment = CurrencyConverter.convertToTargetCurrency(totalInvestmentTRY, selectedCurrency, currencyRates)
+        val profitLoss = CurrencyConverter.convertToTargetCurrency(profitLossTRY, selectedCurrency, currencyRates)
+
+        Log.d(TAG, "Portfolio calculated - Value: $totalValue ${selectedCurrency.code}, Investment: $totalInvestment, P/L: $profitLoss")
 
         return PortfolioData(
             totalValue = totalValue,
             totalInvestment = totalInvestment,
             profitLoss = profitLoss,
             profitLossPercentage = profitLossPercentage
+        )
+    }
+
+    fun setSelectedCurrency(currency: Currency) {
+        Log.d(TAG, "Currency changed to: ${currency.code}")
+        _uiState.value = _uiState.value.copy(selectedCurrency = currency)
+
+        // Recalculate portfolio with new currency
+        viewModelScope.launch {
+            val currentAssets = assetRepository.getAllAssets().first()
+            val portfolioData = calculatePortfolioData(currentAssets)
+            _uiState.value = _uiState.value.copy(
+                totalPortfolioValue = portfolioData.totalValue,
+                totalInvestment = portfolioData.totalInvestment,
+                profitLoss = portfolioData.profitLoss,
+                profitLossPercentage = portfolioData.profitLossPercentage
+            )
+        }
+
+        // Analytics
+        analyticsManager.logCustomEvent(
+            eventName = "currency_changed",
+            parameters = mapOf("currency" to currency.code)
         )
     }
 
