@@ -35,12 +35,14 @@ class RateRepositoryImpl @Inject constructor(
             Log.d(TAG, "Refreshing all rates from unified Finance API")
             val result = refreshAllRatesFromApi()
 
-            result.onSuccess { allRates ->
+            if (result.isSuccess) {
+                val allRates = result.getOrNull() ?: emptyList()
                 val goldRates = allRates.filter { it.type == "GOLD" || it.type == "SILVER" }
                 val currencyRates = allRates.filter { it.type == "CURRENCY" }
                 Log.d(TAG, "Successfully split rates - Gold: ${goldRates.size}, Currency: ${currencyRates.size}")
                 Result.success(Pair(goldRates, currencyRates))
-            }.onFailure { error ->
+            } else {
+                val error = result.exceptionOrNull() ?: Exception("Unknown error")
                 Log.e(TAG, "Failed to refresh all rates: ${error.message}")
                 Result.failure(error)
             }
