@@ -271,7 +271,7 @@ private fun TotalValueHeader(
                             TextButton(
                                 onClick = { showCurrencyMenu = true },
                                 modifier = Modifier
-                                    .height(28.dp)
+                                    .height(24.dp)
                                     .background(
                                         Color.White.copy(alpha = 0.2f),
                                         RoundedCornerShape(12.dp)

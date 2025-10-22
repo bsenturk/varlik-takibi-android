@@ -7,7 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.models.AssetType
+import com.xptlabs.varliktakibi.domain.models.Currency
 import com.xptlabs.varliktakibi.domain.repository.AssetRepository
+import com.xptlabs.varliktakibi.managers.MarketDataManager
+import com.xptlabs.varliktakibi.utils.CurrencyConverter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -23,6 +26,7 @@ data class AnalyticsUiState(
     val profitLossPercentage: Double = 0.0,
     val hasProfitLossData: Boolean = false,
     val assetDistributions: List<AssetDistribution> = emptyList(),
+    val selectedCurrency: Currency = Currency.TRY,
     val errorMessage: String? = null
 )
 
@@ -36,7 +40,8 @@ data class AssetDistribution(
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     private val assetRepository: AssetRepository,
-    private val analyticsManager: FirebaseAnalyticsManager
+    private val analyticsManager: FirebaseAnalyticsManager,
+    private val marketDataManager: MarketDataManager
 ) : ViewModel() {
 
     companion object {
@@ -205,10 +210,18 @@ class AnalyticsViewModel @Inject constructor(
         }
 
         try {
-            // Calculate totals
-            val totalValue = assets.sumOf { it.totalValue }
-            val totalInvestment = assets.sumOf { it.totalInvestment }
-            val profitLoss = totalValue - totalInvestment
+            // Calculate totals in TRY
+            val totalValueTRY = assets.sumOf { it.totalValue }
+            val totalInvestmentTRY = assets.sumOf { it.totalInvestment }
+            val profitLossTRY = totalValueTRY - totalInvestmentTRY
+
+            // Convert to selected currency
+            val selectedCurrency = _uiState.value.selectedCurrency
+            val currencyRates = marketDataManager.currencyRates.value
+
+            val totalValue = CurrencyConverter.convertToTargetCurrency(totalValueTRY, selectedCurrency, currencyRates)
+            val totalInvestment = CurrencyConverter.convertToTargetCurrency(totalInvestmentTRY, selectedCurrency, currencyRates)
+            val profitLoss = CurrencyConverter.convertToTargetCurrency(profitLossTRY, selectedCurrency, currencyRates)
             val profitLossPercentage = if (totalInvestment > 0) {
                 (profitLoss / totalInvestment) * 100
             } else 0.0
@@ -361,6 +374,17 @@ class AnalyticsViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    fun setSelectedCurrency(currency: Currency) {
+        Log.d(TAG, "Currency changed to: ${currency.code}")
+        _uiState.value = _uiState.value.copy(selectedCurrency = currency)
+
+        // Recalculate analytics with new currency
+        viewModelScope.launch {
+            val assets = assetRepository.getAllAssets().first()
+            calculateAnalytics(assets)
+        }
     }
 
     fun generateRandomTestData() {
