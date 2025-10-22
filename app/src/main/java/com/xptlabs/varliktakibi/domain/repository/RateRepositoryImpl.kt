@@ -21,61 +21,52 @@ class RateRepositoryImpl @Inject constructor(
     }
 
     override suspend fun refreshGoldRates(): Result<List<RateEntity>> {
-        return try {
-            Log.d(TAG, "Refreshing gold rates")
-            val result = remoteDataSource.getGoldRates()
-            result.onSuccess { rates ->
-                Log.d(TAG, "Successfully fetched ${rates.size} gold rates")
-                rateDao.insertRates(rates)
-                Log.d(TAG, "Gold rates saved to database")
-            }.onFailure { error ->
-                Log.e(TAG, "Failed to refresh gold rates: ${error.message}")
-            }
-            result
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception while refreshing gold rates", e)
-            Result.failure(e)
-        }
+        // Now uses the unified Finance API
+        return refreshAllRatesFromApi()
     }
 
     override suspend fun refreshCurrencyRates(): Result<List<RateEntity>> {
-        return try {
-            Log.d(TAG, "Refreshing currency rates")
-            val result = remoteDataSource.getCurrencyRates()
-            result.onSuccess { rates ->
-                Log.d(TAG, "Successfully fetched ${rates.size} currency rates")
-                rateDao.insertRates(rates)
-                Log.d(TAG, "Currency rates saved to database")
-            }.onFailure { error ->
-                Log.e(TAG, "Failed to refresh currency rates: ${error.message}")
-            }
-            result
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception while refreshing currency rates", e)
-            Result.failure(e)
-        }
+        // Now uses the unified Finance API
+        return refreshAllRatesFromApi()
     }
 
     override suspend fun refreshAllRates(): Result<Pair<List<RateEntity>, List<RateEntity>>> {
         return try {
-            Log.d(TAG, "Refreshing all rates")
-            val goldResult = refreshGoldRates()
-            val currencyResult = refreshCurrencyRates()
+            Log.d(TAG, "Refreshing all rates from unified Finance API")
+            val result = refreshAllRatesFromApi()
 
-            if (goldResult.isSuccess && currencyResult.isSuccess) {
-                val goldRates = goldResult.getOrDefault(emptyList())
-                val currencyRates = currencyResult.getOrDefault(emptyList())
-                Log.d(TAG, "Successfully refreshed all rates - Gold: ${goldRates.size}, Currency: ${currencyRates.size}")
+            result.onSuccess { allRates ->
+                val goldRates = allRates.filter { it.type == "GOLD" || it.type == "SILVER" }
+                val currencyRates = allRates.filter { it.type == "CURRENCY" }
+                Log.d(TAG, "Successfully split rates - Gold: ${goldRates.size}, Currency: ${currencyRates.size}")
                 Result.success(Pair(goldRates, currencyRates))
-            } else {
-                val goldError = goldResult.exceptionOrNull()
-                val currencyError = currencyResult.exceptionOrNull()
-                val combinedError = goldError ?: currencyError ?: Exception("Unknown error")
-                Log.e(TAG, "Failed to refresh all rates: ${combinedError.message}")
-                Result.failure(combinedError)
+            }.onFailure { error ->
+                Log.e(TAG, "Failed to refresh all rates: ${error.message}")
+                Result.failure(error)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception while refreshing all rates", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Internal method to fetch all rates from the new Finance API
+     */
+    private suspend fun refreshAllRatesFromApi(): Result<List<RateEntity>> {
+        return try {
+            Log.d(TAG, "Fetching rates from Finance API")
+            val result = remoteDataSource.getAllRates()
+            result.onSuccess { rates ->
+                Log.d(TAG, "Successfully fetched ${rates.size} rates from API")
+                rateDao.insertRates(rates)
+                Log.d(TAG, "All rates saved to database")
+            }.onFailure { error ->
+                Log.e(TAG, "Failed to fetch rates from API: ${error.message}")
+            }
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception while fetching rates from API", e)
             Result.failure(e)
         }
     }
