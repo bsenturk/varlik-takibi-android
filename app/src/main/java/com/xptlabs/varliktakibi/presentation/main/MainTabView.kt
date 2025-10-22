@@ -9,13 +9,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.xptlabs.varliktakibi.ads.AdMobManager
 import com.xptlabs.varliktakibi.ads.components.AdMobBannerAd
 import com.xptlabs.varliktakibi.presentation.analytics.AnalyticsScreen
+import com.xptlabs.varliktakibi.presentation.assetdetail.AssetDetailScreen
 import com.xptlabs.varliktakibi.presentation.assets.AssetsScreen
 import com.xptlabs.varliktakibi.presentation.rates.RatesScreen
 import com.xptlabs.varliktakibi.presentation.settings.SettingsScreen
@@ -84,6 +87,19 @@ fun MainTabView(
                     // Analytics screen - accessible from Assets screen
                     composable("analytics") {
                         AnalyticsScreen(navController = navController)
+                    }
+                    // Asset Detail Screen
+                    composable(
+                        route = "asset_detail/{assetId}",
+                        arguments = listOf(
+                            navArgument("assetId") { type = NavType.StringType }
+                        )
+                    ) { backStackEntry ->
+                        val assetId = backStackEntry.arguments?.getString("assetId") ?: ""
+                        AssetDetailScreen(
+                            assetId = assetId,
+                            navController = navController
+                        )
                     }
                 }
             }
