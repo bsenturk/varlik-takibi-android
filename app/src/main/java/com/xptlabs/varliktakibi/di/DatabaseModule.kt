@@ -5,8 +5,11 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.data.local.dao.AssetDao
+import com.xptlabs.varliktakibi.data.local.dao.AssetPriceHistoryDao
+import com.xptlabs.varliktakibi.data.local.dao.AssetTransactionHistoryDao
 import com.xptlabs.varliktakibi.data.local.dao.RateDao
 import com.xptlabs.varliktakibi.data.local.database.AssetTrackerDatabase
+import com.xptlabs.varliktakibi.data.local.database.MIGRATION_5_6
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,7 +30,7 @@ object DatabaseModule {
             context,
             AssetTrackerDatabase::class.java,
             AssetTrackerDatabase.DATABASE_NAME
-        )
+        ).addMigrations(MIGRATION_5_6)
 
         if (BuildConfig.DEBUG) {
             builder.fallbackToDestructiveMigration()
@@ -49,5 +52,15 @@ object DatabaseModule {
     @Provides
     fun provideRateDao(database: AssetTrackerDatabase): RateDao {
         return database.rateDao()
+    }
+
+    @Provides
+    fun provideAssetPriceHistoryDao(database: AssetTrackerDatabase): AssetPriceHistoryDao {
+        return database.assetPriceHistoryDao()
+    }
+
+    @Provides
+    fun provideAssetTransactionHistoryDao(database: AssetTrackerDatabase): AssetTransactionHistoryDao {
+        return database.assetTransactionHistoryDao()
     }
 }
