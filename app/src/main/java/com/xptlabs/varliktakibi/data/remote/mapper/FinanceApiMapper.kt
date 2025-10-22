@@ -16,52 +16,57 @@ object FinanceApiMapper {
         val rates = mutableListOf<RateEntity>()
         val dto = response.rates
 
-        // Map currencies
-        rates.add(dto.usd.toRateEntity("USD", "CURRENCY"))
-        rates.add(dto.eur.toRateEntity("EUR", "CURRENCY"))
-        rates.add(dto.gbp.toRateEntity("GBP", "CURRENCY"))
+        // Map currencies (only if not null)
+        dto.usd?.let { rates.add(it.toRateEntity("USD", "CURRENCY")) }
+        dto.eur?.let { rates.add(it.toRateEntity("EUR", "CURRENCY")) }
+        dto.gbp?.let { rates.add(it.toRateEntity("GBP", "CURRENCY")) }
 
-        // Map gold products
-        rates.add(dto.gra.toRateEntity("GRA", "GOLD"))
-        rates.add(dto.ceyrek.toRateEntity("CEYREK", "GOLD"))
-        rates.add(dto.yarim.toRateEntity("YARIM", "GOLD"))
-        rates.add(dto.tam.toRateEntity("TAM", "GOLD"))
-        rates.add(dto.cumhuriyet.toRateEntity("CUMHURIYET", "GOLD"))
-        rates.add(dto.ata.toRateEntity("ATA", "GOLD"))
-        rates.add(dto.resat.toRateEntity("RESAT", "GOLD"))
-        rates.add(dto.hamit.toRateEntity("HAMIT", "GOLD"))
-        rates.add(dto.besli.toRateEntity("BESLI", "GOLD"))
-        rates.add(dto.gremse.toRateEntity("GREMSE", "GOLD"))
-        rates.add(dto.ayar14.toRateEntity("14AYAR", "GOLD"))
-        rates.add(dto.ayar18.toRateEntity("18AYAR", "GOLD"))
-        rates.add(dto.ikiBucuk.toRateEntity("IKIbucuk", "GOLD"))
-        rates.add(dto.ayar22.toRateEntity("22AYAR", "GOLD"))
+        // Map gold products (only if not null)
+        dto.gra?.let { rates.add(it.toRateEntity("GRA", "GOLD")) }
+        dto.ceyrek?.let { rates.add(it.toRateEntity("CEYREK", "GOLD")) }
+        dto.yarim?.let { rates.add(it.toRateEntity("YARIM", "GOLD")) }
+        dto.tam?.let { rates.add(it.toRateEntity("TAM", "GOLD")) }
+        dto.cumhuriyet?.let { rates.add(it.toRateEntity("CUMHURIYET", "GOLD")) }
+        dto.ata?.let { rates.add(it.toRateEntity("ATA", "GOLD")) }
+        dto.resat?.let { rates.add(it.toRateEntity("RESAT", "GOLD")) }
+        dto.hamit?.let { rates.add(it.toRateEntity("HAMIT", "GOLD")) }
+        dto.besli?.let { rates.add(it.toRateEntity("BESLI", "GOLD")) }
+        dto.gremse?.let { rates.add(it.toRateEntity("GREMSE", "GOLD")) }
+        dto.ayar14?.let { rates.add(it.toRateEntity("14AYAR", "GOLD")) }
+        dto.ayar18?.let { rates.add(it.toRateEntity("18AYAR", "GOLD")) }
+        dto.ikiBucuk?.let { rates.add(it.toRateEntity("IKIbucuk", "GOLD")) }
+        dto.ayar22?.let { rates.add(it.toRateEntity("22AYAR", "GOLD")) }
 
-        // Map silver
-        rates.add(dto.gumus.toRateEntity("GUMUS", "SILVER"))
+        // Map silver (only if not null)
+        dto.gumus?.let { rates.add(it.toRateEntity("GUMUS", "SILVER")) }
 
         return rates
     }
 
     private fun CommonRateDto.toRateEntity(code: String, type: String): RateEntity {
+        val changeValue = change ?: 0.0
+        val sellingValue = selling ?: 0.0
         val changePercent = calculateChangePercent()
 
         return RateEntity(
             id = code,  // Use code as ID so MarketDataManager can find it
-            name = name,
+            name = name ?: code,  // Fallback to code if name is null
             type = type,
-            buyPrice = buying,
-            sellPrice = selling,
-            change = change,
+            buyPrice = buying ?: 0.0,
+            sellPrice = sellingValue,
+            change = changeValue,
             changePercent = changePercent,
             lastUpdated = Date(),
-            isChangePercentPositive = change >= 0
+            isChangePercentPositive = changeValue >= 0
         )
     }
 
     private fun CommonRateDto.calculateChangePercent(): Double {
-        return if (selling > 0) {
-            (change / selling) * 100
+        val sellingValue = selling ?: 0.0
+        val changeValue = change ?: 0.0
+
+        return if (sellingValue > 0) {
+            (changeValue / sellingValue) * 100
         } else {
             0.0
         }

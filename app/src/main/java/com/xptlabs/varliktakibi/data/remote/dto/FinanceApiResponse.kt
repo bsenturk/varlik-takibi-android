@@ -12,73 +12,73 @@ data class FinanceApiResponse(
 
 data class RatesDto(
     @SerializedName("USD")
-    val usd: CommonRateDto,
+    val usd: CommonRateDto?,
 
     @SerializedName("EUR")
-    val eur: CommonRateDto,
+    val eur: CommonRateDto?,
 
     @SerializedName("GBP")
-    val gbp: CommonRateDto,
+    val gbp: CommonRateDto?,
 
     @SerializedName("GRA")
-    val gra: CommonRateDto, // Gram Gold
+    val gra: CommonRateDto?, // Gram Gold
 
     @SerializedName("CEYREK")
-    val ceyrek: CommonRateDto, // Quarter Gold
+    val ceyrek: CommonRateDto?, // Quarter Gold
 
     @SerializedName("YARIM")
-    val yarim: CommonRateDto, // Half Gold
+    val yarim: CommonRateDto?, // Half Gold
 
     @SerializedName("TAM")
-    val tam: CommonRateDto, // Full Gold
+    val tam: CommonRateDto?, // Full Gold
 
     @SerializedName("CUMHURIYET")
-    val cumhuriyet: CommonRateDto, // Republic Gold
+    val cumhuriyet: CommonRateDto?, // Republic Gold
 
     @SerializedName("ATA")
-    val ata: CommonRateDto, // Ata Gold
+    val ata: CommonRateDto?, // Ata Gold
 
     @SerializedName("RESAT")
-    val resat: CommonRateDto, // Resat Gold
+    val resat: CommonRateDto?, // Resat Gold
 
     @SerializedName("HAMIT")
-    val hamit: CommonRateDto, // Hamit Gold
+    val hamit: CommonRateDto?, // Hamit Gold
 
     @SerializedName("BESLI")
-    val besli: CommonRateDto, // Five Gold
+    val besli: CommonRateDto?, // Five Gold
 
     @SerializedName("GREMSE")
-    val gremse: CommonRateDto, // Gremse Gold
+    val gremse: CommonRateDto?, // Gremse Gold
 
     @SerializedName("14AYAR")
-    val ayar14: CommonRateDto, // 14 Carat Gold
+    val ayar14: CommonRateDto?, // 14 Carat Gold
 
     @SerializedName("18AYAR")
-    val ayar18: CommonRateDto, // 18 Carat Gold
+    val ayar18: CommonRateDto?, // 18 Carat Gold
 
     @SerializedName("IKIbucuk")
-    val ikiBucuk: CommonRateDto, // Two and Half Gold
+    val ikiBucuk: CommonRateDto?, // Two and Half Gold
 
     @SerializedName("22AYAR")
-    val ayar22: CommonRateDto, // 22 Carat Bracelet
+    val ayar22: CommonRateDto?, // 22 Carat Bracelet
 
     @SerializedName("GUMUS")
-    val gumus: CommonRateDto // Silver
+    val gumus: CommonRateDto? // Silver
 )
 
 data class CommonRateDto(
     @SerializedName("type")
-    val type: String,
+    val type: String? = null,
 
     @SerializedName("change")
-    val change: Double,
+    val change: Double? = null,
 
     @SerializedName("name")
-    val name: String,
+    val name: String? = null,
 
     @SerializedName("buying")
-    val buying: Double,
+    val buying: Double? = null,
 
     @SerializedName("selling")
-    val selling: Double
+    val selling: Double? = null
 )

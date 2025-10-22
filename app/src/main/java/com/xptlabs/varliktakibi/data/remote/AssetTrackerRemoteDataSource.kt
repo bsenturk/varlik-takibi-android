@@ -27,18 +27,25 @@ class AssetTrackerRemoteDataSource @Inject constructor(
             Log.d(TAG, "Fetching rates from https://finance.truncgil.com/api/today.json")
             val response = financeApiService.getTodayRates()
 
+            Log.d(TAG, "Response code: ${response.code()}")
+            Log.d(TAG, "Response successful: ${response.isSuccessful}")
+            Log.d(TAG, "Response body is null: ${response.body() == null}")
+
             if (response.isSuccessful && response.body() != null) {
                 Log.d(TAG, "Successfully fetched rates from API")
                 val rates = FinanceApiMapper.mapToRateEntities(response.body()!!)
                 Log.d(TAG, "Mapped ${rates.size} rates from API")
                 Result.success(rates)
             } else {
-                val error = "Failed to fetch rates: ${response.code()}"
+                val errorBody = response.errorBody()?.string()
+                val error = "Failed to fetch rates: ${response.code()}, error: $errorBody"
                 Log.e(TAG, error)
                 Result.failure(Exception(error))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Exception while fetching rates from API", e)
+            Log.e(TAG, "Exception while fetching rates from API: ${e.message}", e)
+            Log.e(TAG, "Exception type: ${e.javaClass.simpleName}")
+            e.printStackTrace()
             Result.failure(e)
         }
     }
