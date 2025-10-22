@@ -31,6 +31,16 @@ class AssetTrackerRemoteDataSource @Inject constructor(
             Log.d(TAG, "Response successful: ${response.isSuccessful}")
             Log.d(TAG, "Response body is null: ${response.body() == null}")
 
+            // Log raw response for debugging
+            response.raw().body?.let { rawBody ->
+                try {
+                    val rawString = rawBody.string()
+                    Log.d(TAG, "Raw response body (first 500 chars): ${rawString.take(500)}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Could not read raw body: ${e.message}")
+                }
+            }
+
             if (response.isSuccessful && response.body() != null) {
                 Log.d(TAG, "Successfully fetched rates from API")
                 val rates = FinanceApiMapper.mapToRateEntities(response.body()!!)

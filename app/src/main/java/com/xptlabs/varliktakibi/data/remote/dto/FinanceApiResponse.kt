@@ -23,43 +23,43 @@ data class RatesDto(
     @SerializedName("GRA")
     val gra: CommonRateDto?, // Gram Gold
 
-    @SerializedName("CEYREK")
+    @SerializedName("CEYREKALTIN")
     val ceyrek: CommonRateDto?, // Quarter Gold
 
-    @SerializedName("YARIM")
+    @SerializedName("YARIMALTIN")
     val yarim: CommonRateDto?, // Half Gold
 
-    @SerializedName("TAM")
+    @SerializedName("TAMALTIN")
     val tam: CommonRateDto?, // Full Gold
 
-    @SerializedName("CUMHURIYET")
+    @SerializedName("CUMHURIYETALTINI")
     val cumhuriyet: CommonRateDto?, // Republic Gold
 
-    @SerializedName("ATA")
+    @SerializedName("ATAALTIN")
     val ata: CommonRateDto?, // Ata Gold
 
-    @SerializedName("RESAT")
+    @SerializedName("RESATALTIN")
     val resat: CommonRateDto?, // Resat Gold
 
-    @SerializedName("HAMIT")
+    @SerializedName("HAMITALTIN")
     val hamit: CommonRateDto?, // Hamit Gold
 
-    @SerializedName("BESLI")
+    @SerializedName("BESLIALTIN")
     val besli: CommonRateDto?, // Five Gold
 
-    @SerializedName("GREMSE")
+    @SerializedName("GREMSEALTIN")
     val gremse: CommonRateDto?, // Gremse Gold
 
-    @SerializedName("14AYAR")
+    @SerializedName("14AYARALTIN")
     val ayar14: CommonRateDto?, // 14 Carat Gold
 
-    @SerializedName("18AYAR")
+    @SerializedName("18AYARALTIN")
     val ayar18: CommonRateDto?, // 18 Carat Gold
 
-    @SerializedName("IKIbucuk")
+    @SerializedName("IKIBUCUKALTIN")
     val ikiBucuk: CommonRateDto?, // Two and Half Gold
 
-    @SerializedName("22AYAR")
+    @SerializedName("YIA")  // 22 Ayar Bilezik = YIA in API
     val ayar22: CommonRateDto?, // 22 Carat Bracelet
 
     @SerializedName("GUMUS")
