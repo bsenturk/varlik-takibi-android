@@ -344,9 +344,14 @@ class AnalyticsViewModel @Inject constructor(
             AssetType.GOLD_ATA,
             AssetType.GOLD_RESAT,
             AssetType.GOLD_HAMIT,
-            AssetType.GOLD_BESLI -> Color(0xFFFFD700) // Gold
+            AssetType.GOLD_BESLI,
+            AssetType.GOLD_GREMSE,
+            AssetType.GOLD_14_CARAT,
+            AssetType.GOLD_18_CARAT,
+            AssetType.GOLD_TWO_HALF,
+            AssetType.GOLD_22_CARAT_BRACELET -> Color(0xFFFFD700) // Gold
 
-            AssetType.SILVER -> Color(0xFFC0C0C0)
+            AssetType.SILVER -> Color(0xFFC0C0C0) // Silver
             AssetType.USD -> Color(0xFF4CAF50) // Green
             AssetType.EUR -> Color(0xFF2196F3) // Blue
             AssetType.GBP -> Color(0xFF9C27B0) // Purple
