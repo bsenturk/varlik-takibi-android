@@ -243,10 +243,10 @@ private fun PriceChartCard(uiState: AssetDetailUiState, viewModel: AssetDetailVi
                     )
                 }
             } else {
-                val modelProducer = remember { CartesianChartModelProducer.build() }
+                val modelProducer = remember { CartesianChartModelProducer() }
 
                 LaunchedEffect(uiState.chartData) {
-                    modelProducer.tryRunTransaction {
+                    modelProducer.runTransaction {
                         lineSeries {
                             series(uiState.chartData.map { it.value })
                         }
