@@ -8,6 +8,7 @@ import com.xptlabs.varliktakibi.data.local.entities.AssetTransactionHistoryEntit
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.repository.AssetRepository
 import com.xptlabs.varliktakibi.managers.AssetHistoryManager
+import com.xptlabs.varliktakibi.managers.MarketDataManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,7 +37,8 @@ data class AssetDetailUiState(
 @HiltViewModel
 class AssetDetailViewModel @Inject constructor(
     private val assetRepository: AssetRepository,
-    private val historyManager: AssetHistoryManager
+    private val historyManager: AssetHistoryManager,
+    private val marketDataManager: MarketDataManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AssetDetailUiState())
@@ -52,6 +54,21 @@ class AssetDetailViewModel @Inject constructor(
                 val asset = assets.find { it.id == assetId }
 
                 if (asset != null) {
+                    // Update with current market price
+                    val currentPrice = marketDataManager.getCurrentPrice(asset.type)
+                    val updatedAsset = asset.copy(
+                        currentPrice = currentPrice,
+                        lastUpdated = Date()
+                    )
+
+                    Log.d("AssetDetailViewModel", "Updated ${asset.name}: old price=${asset.currentPrice}, new price=$currentPrice")
+
+                    // Save updated asset with current price to repository
+                    assetRepository.updateAsset(updatedAsset)
+
+                    // Record daily snapshot (updates if same day, creates new if different day)
+                    historyManager.recordDailySnapshot(updatedAsset)
+
                     // Load price history (last 30 days)
                     val priceHistory = historyManager.getPriceHistory(assetId, 30)
 
@@ -59,7 +76,7 @@ class AssetDetailViewModel @Inject constructor(
                     val transactionHistory = historyManager.getRecentTransactions(assetId, 10)
 
                     _uiState.value = _uiState.value.copy(
-                        asset = asset,
+                        asset = updatedAsset,  // Use updated asset with current price
                         priceHistory = priceHistory,
                         transactionHistory = transactionHistory,
                         isLoading = false
@@ -68,7 +85,7 @@ class AssetDetailViewModel @Inject constructor(
                     // Update chart data with initial period
                     updateChartData(_uiState.value.selectedChartPeriod)
 
-                    Log.d("AssetDetailViewModel", "Loaded asset: ${asset.name}")
+                    Log.d("AssetDetailViewModel", "Loaded asset: ${updatedAsset.name}")
                     Log.d("AssetDetailViewModel", "Price history records: ${priceHistory.size}")
                     Log.d("AssetDetailViewModel", "Transaction history records: ${transactionHistory.size}")
                 } else {
