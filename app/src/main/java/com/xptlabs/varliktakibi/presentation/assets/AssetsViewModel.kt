@@ -341,7 +341,7 @@ class AssetsViewModel @Inject constructor(
                     val transactionType = when {
                         asset.amount > existing.amount -> TransactionType.ADD
                         asset.amount < existing.amount -> TransactionType.REMOVE
-                        else -> TransactionType.UPDATE
+                        else -> TransactionType.EDIT
                     }
                     historyManager.recordTransaction(updatedAsset, transactionType, existing.amount)
                     historyManager.recordDailySnapshot(updatedAsset)
