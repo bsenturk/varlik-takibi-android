@@ -50,6 +50,7 @@ class AssetsViewModel @Inject constructor(
         Log.d(TAG, "AssetsViewModel initialized")
         observeAssets()
         observeMarketData()
+        observeSelectedCurrency()
         loadInitialData()
     }
 
@@ -154,6 +155,25 @@ class AssetsViewModel @Inject constructor(
                 Unit
             }.collect {
                 // This will trigger the assets observer which will update prices
+            }
+        }
+    }
+
+    private fun observeSelectedCurrency() {
+        viewModelScope.launch {
+            marketDataManager.selectedCurrency.collect { currency ->
+                Log.d(TAG, "Selected currency changed to: ${currency.code}")
+                _uiState.value = _uiState.value.copy(selectedCurrency = currency)
+
+                // Recalculate portfolio with new currency
+                val currentAssets = assetRepository.getAllAssets().first()
+                val portfolioData = calculatePortfolioData(currentAssets)
+                _uiState.value = _uiState.value.copy(
+                    totalPortfolioValue = portfolioData.totalValue,
+                    totalInvestment = portfolioData.totalInvestment,
+                    profitLoss = portfolioData.profitLoss,
+                    profitLossPercentage = portfolioData.profitLossPercentage
+                )
             }
         }
     }
@@ -535,20 +555,10 @@ class AssetsViewModel @Inject constructor(
     }
 
     fun setSelectedCurrency(currency: Currency) {
-        Log.d(TAG, "Currency changed to: ${currency.code}")
-        _uiState.value = _uiState.value.copy(selectedCurrency = currency)
-
-        // Recalculate portfolio with new currency
-        viewModelScope.launch {
-            val currentAssets = assetRepository.getAllAssets().first()
-            val portfolioData = calculatePortfolioData(currentAssets)
-            _uiState.value = _uiState.value.copy(
-                totalPortfolioValue = portfolioData.totalValue,
-                totalInvestment = portfolioData.totalInvestment,
-                profitLoss = portfolioData.profitLoss,
-                profitLossPercentage = portfolioData.profitLossPercentage
-            )
-        }
+        Log.d(TAG, "Currency changed to: ${currency.code} from AssetsViewModel")
+        // Update shared currency state in MarketDataManager
+        // This will trigger observeSelectedCurrency in both AssetsViewModel and AnalyticsViewModel
+        marketDataManager.setSelectedCurrency(currency)
 
         // Analytics
         analyticsManager.logCustomEvent(

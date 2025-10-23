@@ -54,6 +54,7 @@ class AnalyticsViewModel @Inject constructor(
     init {
         Log.d(TAG, "AnalyticsViewModel initialized")
         observeAssets()
+        observeSelectedCurrency()
     }
 
     private fun observeAssets() {
@@ -70,6 +71,19 @@ class AnalyticsViewModel @Inject constructor(
                     Log.d(TAG, "Assets updated: ${assets.size} assets")
                     calculateAnalytics(assets)
                 }
+        }
+    }
+
+    private fun observeSelectedCurrency() {
+        viewModelScope.launch {
+            marketDataManager.selectedCurrency.collect { currency ->
+                Log.d(TAG, "Selected currency changed to: ${currency.code}")
+                _uiState.value = _uiState.value.copy(selectedCurrency = currency)
+
+                // Recalculate analytics with new currency
+                val assets = assetRepository.getAllAssets().first()
+                calculateAnalytics(assets)
+            }
         }
     }
 
@@ -377,14 +391,10 @@ class AnalyticsViewModel @Inject constructor(
     }
 
     fun setSelectedCurrency(currency: Currency) {
-        Log.d(TAG, "Currency changed to: ${currency.code}")
-        _uiState.value = _uiState.value.copy(selectedCurrency = currency)
-
-        // Recalculate analytics with new currency
-        viewModelScope.launch {
-            val assets = assetRepository.getAllAssets().first()
-            calculateAnalytics(assets)
-        }
+        Log.d(TAG, "Currency changed to: ${currency.code} from AnalyticsViewModel")
+        // Update shared currency state in MarketDataManager
+        // This will trigger observeSelectedCurrency in both AssetsViewModel and AnalyticsViewModel
+        marketDataManager.setSelectedCurrency(currency)
     }
 
     fun generateRandomTestData() {

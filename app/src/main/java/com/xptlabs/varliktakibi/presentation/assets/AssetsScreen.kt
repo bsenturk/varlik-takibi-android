@@ -271,12 +271,12 @@ private fun TotalValueHeader(
                             TextButton(
                                 onClick = { showCurrencyMenu = true },
                                 modifier = Modifier
-                                    .height(24.dp)
+                                    .height(20.dp)
                                     .background(
                                         Color.White.copy(alpha = 0.2f),
-                                        RoundedCornerShape(12.dp)
+                                        RoundedCornerShape(10.dp)
                                     ),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                             ) {
                                 Text(
                                     text = selectedCurrency.code,

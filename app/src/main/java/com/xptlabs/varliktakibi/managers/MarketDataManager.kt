@@ -3,6 +3,7 @@ package com.xptlabs.varliktakibi.managers
 import android.util.Log
 import com.xptlabs.varliktakibi.data.local.entities.RateEntity
 import com.xptlabs.varliktakibi.domain.models.AssetType
+import com.xptlabs.varliktakibi.domain.models.Currency
 import com.xptlabs.varliktakibi.domain.repository.RateRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,10 @@ class MarketDataManager @Inject constructor(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    // Shared currency selection state
+    private val _selectedCurrency = MutableStateFlow(Currency.TRY)
+    val selectedCurrency: StateFlow<Currency> = _selectedCurrency.asStateFlow()
 
     init {
         Log.d(TAG, "MarketDataManager initialized")
@@ -216,5 +221,11 @@ class MarketDataManager @Inject constructor(
             isCurrencyAsset(assetType) -> getCurrencyRate(assetType)
             else -> null
         }
+    }
+
+    // Set selected currency (shared across app)
+    fun setSelectedCurrency(currency: Currency) {
+        Log.d(TAG, "Currency changed to: ${currency.code}")
+        _selectedCurrency.value = currency
     }
 }
