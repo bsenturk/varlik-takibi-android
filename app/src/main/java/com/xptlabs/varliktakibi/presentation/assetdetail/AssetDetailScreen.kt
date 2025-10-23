@@ -381,7 +381,7 @@ private fun TransactionHistoryItem(transaction: com.xptlabs.varliktakibi.data.lo
 
         Column(horizontalAlignment = Alignment.End) {
             Text(
-                text = "${if (transaction.transactionType == TransactionType.ADD) "+" else if (transaction.transactionType == TransactionType.REMOVE) "-" else ""}${String.format("%.2f", transaction.amount)}",
+                text = "${if (transaction.transactionType == TransactionType.ADD) "+" else if (transaction.transactionType == TransactionType.REMOVE) "-" else ""}${formatAmount(transaction.amount)}",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = when (transaction.transactionType) {
@@ -391,7 +391,7 @@ private fun TransactionHistoryItem(transaction: com.xptlabs.varliktakibi.data.lo
                 }
             )
             Text(
-                text = "Toplam: ${String.format("%.2f", transaction.totalAmount)}",
+                text = "Toplam: ${formatAmount(transaction.totalAmount)}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -496,7 +496,7 @@ private fun PriceHistoryItem(priceRecord: com.xptlabs.varliktakibi.data.local.en
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = "${String.format("%.2f", priceRecord.amount)} adet",
+                text = "${formatAmount(priceRecord.amount)} adet",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -524,6 +524,14 @@ private fun formatDate(date: Date): String {
 
 private fun formatCurrency(amount: Double): String {
     return "₺${String.format("%,.2f", amount)}"
+}
+
+private fun formatAmount(amount: Double): String {
+    return if (amount % 1.0 == 0.0) {
+        String.format("%.0f", amount)
+    } else {
+        String.format("%.2f", amount)
+    }
 }
 
 enum class ChartPeriod(val label: String) {
