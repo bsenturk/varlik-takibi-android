@@ -172,9 +172,9 @@ class AssetHistoryManager @Inject constructor(
     }
 
     /**
-     * Get recent transactions
+     * Get recent transactions (sorted ascending - initial transaction first)
      */
     suspend fun getRecentTransactions(assetId: String, limit: Int = 10): List<AssetTransactionHistoryEntity> {
-        return transactionHistoryDao.getRecentTransactionsByAssetId(assetId, limit)
+        return transactionHistoryDao.getRecentTransactionsByAssetId(assetId, limit).reversed()
     }
 }

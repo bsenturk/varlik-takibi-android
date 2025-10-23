@@ -5,10 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
+import com.xptlabs.varliktakibi.data.local.entities.TransactionType
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.models.AssetType
 import com.xptlabs.varliktakibi.domain.models.Currency
 import com.xptlabs.varliktakibi.domain.repository.AssetRepository
+import com.xptlabs.varliktakibi.managers.AssetHistoryManager
 import com.xptlabs.varliktakibi.managers.MarketDataManager
 import com.xptlabs.varliktakibi.utils.CurrencyConverter
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,7 +38,8 @@ data class AssetsUiState(
 class AssetsViewModel @Inject constructor(
     private val assetRepository: AssetRepository,
     private val analyticsManager: FirebaseAnalyticsManager,
-    val marketDataManager: MarketDataManager
+    val marketDataManager: MarketDataManager,
+    private val historyManager: AssetHistoryManager
 ) : ViewModel() {
 
     companion object {
@@ -222,6 +225,10 @@ class AssetsViewModel @Inject constructor(
 
                 assetRepository.insertAsset(updatedAsset)
 
+                // Record transaction and daily snapshot
+                historyManager.recordTransaction(updatedAsset, TransactionType.INITIAL)
+                historyManager.recordDailySnapshot(updatedAsset)
+
                 // Analytics
                 analyticsManager.logAssetAdded(
                     assetType = asset.type.name,
@@ -276,6 +283,10 @@ class AssetsViewModel @Inject constructor(
                     Log.d(TAG, "Updating existing asset: ${existingAsset.amount} + ${newAsset.amount} = ${combinedAsset.amount}")
                     assetRepository.updateAsset(combinedAsset)
 
+                    // Record transaction and daily snapshot
+                    historyManager.recordTransaction(combinedAsset, TransactionType.ADD, existingAsset.amount)
+                    historyManager.recordDailySnapshot(combinedAsset)
+
                     // Analytics
                     analyticsManager.logAssetUpdated(
                         assetType = combinedAsset.type.name,
@@ -286,6 +297,10 @@ class AssetsViewModel @Inject constructor(
                     // Add new asset
                     Log.d(TAG, "Adding new asset: ${updatedAsset.name}")
                     assetRepository.insertAsset(updatedAsset)
+
+                    // Record transaction and daily snapshot
+                    historyManager.recordTransaction(updatedAsset, TransactionType.INITIAL)
+                    historyManager.recordDailySnapshot(updatedAsset)
 
                     // Analytics
                     analyticsManager.logAssetAdded(
@@ -321,6 +336,17 @@ class AssetsViewModel @Inject constructor(
 
                 assetRepository.updateAsset(updatedAsset)
 
+                // Record transaction and daily snapshot
+                existingAsset?.let { existing ->
+                    val transactionType = when {
+                        asset.amount > existing.amount -> TransactionType.ADD
+                        asset.amount < existing.amount -> TransactionType.REMOVE
+                        else -> TransactionType.UPDATE
+                    }
+                    historyManager.recordTransaction(updatedAsset, transactionType, existing.amount)
+                    historyManager.recordDailySnapshot(updatedAsset)
+                }
+
                 // Analytics
                 existingAsset?.let { existing ->
                     analyticsManager.logAssetUpdated(
@@ -349,6 +375,9 @@ class AssetsViewModel @Inject constructor(
             try {
                 Log.d(TAG, "Deleting asset: ${asset.name}")
                 assetRepository.deleteAsset(asset)
+
+                // Delete asset history
+                historyManager.deleteAssetHistory(asset.id)
 
                 // Analytics
                 analyticsManager.logAssetDeleted(
