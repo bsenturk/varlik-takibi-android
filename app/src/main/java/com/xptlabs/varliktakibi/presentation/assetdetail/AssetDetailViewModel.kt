@@ -54,20 +54,14 @@ class AssetDetailViewModel @Inject constructor(
                 val asset = assets.find { it.id == assetId }
 
                 if (asset != null) {
-                    // Update with current market price
+                    // Update with current market price (only for display, don't save to DB)
                     val currentPrice = marketDataManager.getCurrentPrice(asset.type)
-                    val updatedAsset = asset.copy(
+                    val displayAsset = asset.copy(
                         currentPrice = currentPrice,
                         lastUpdated = Date()
                     )
 
-                    Log.d("AssetDetailViewModel", "Updated ${asset.name}: old price=${asset.currentPrice}, new price=$currentPrice")
-
-                    // Save updated asset with current price to repository
-                    assetRepository.updateAsset(updatedAsset)
-
-                    // Record daily snapshot (updates if same day, creates new if different day)
-                    historyManager.recordDailySnapshot(updatedAsset)
+                    Log.d("AssetDetailViewModel", "Displaying ${asset.name}: stored price=${asset.currentPrice}, current price=$currentPrice")
 
                     // Load price history (last 30 days)
                     val priceHistory = historyManager.getPriceHistory(assetId, 30)
@@ -76,7 +70,7 @@ class AssetDetailViewModel @Inject constructor(
                     val transactionHistory = historyManager.getRecentTransactions(assetId, 10)
 
                     _uiState.value = _uiState.value.copy(
-                        asset = updatedAsset,  // Use updated asset with current price
+                        asset = displayAsset,  // Use display asset with current price
                         priceHistory = priceHistory,
                         transactionHistory = transactionHistory,
                         isLoading = false
@@ -85,7 +79,7 @@ class AssetDetailViewModel @Inject constructor(
                     // Update chart data with initial period
                     updateChartData(_uiState.value.selectedChartPeriod)
 
-                    Log.d("AssetDetailViewModel", "Loaded asset: ${updatedAsset.name}")
+                    Log.d("AssetDetailViewModel", "Loaded asset: ${displayAsset.name}")
                     Log.d("AssetDetailViewModel", "Price history records: ${priceHistory.size}")
                     Log.d("AssetDetailViewModel", "Transaction history records: ${transactionHistory.size}")
                 } else {
