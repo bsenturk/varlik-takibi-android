@@ -90,10 +90,11 @@ class AssetsViewModel @Inject constructor(
                     Log.d(TAG, "Assets updated: ${assets.size} assets")
 
                     // Update asset prices with current market data
-                    val portfolioData = calculatePortfolioData(assets)
+                    val updatedAssets = updateAssetPrices(assets)
+                    val portfolioData = calculatePortfolioData(updatedAssets)
 
                     _uiState.value = _uiState.value.copy(
-                        assets = assets,
+                        assets = updatedAssets,
                         isLoading = false,
                         hasDataLoaded = true,
                         errorMessage = null,
@@ -167,8 +168,10 @@ class AssetsViewModel @Inject constructor(
 
                 // Recalculate portfolio with new currency
                 val currentAssets = assetRepository.getAllAssets().first()
-                val portfolioData = calculatePortfolioData(currentAssets)
+                val updatedAssets = updateAssetPrices(currentAssets)
+                val portfolioData = calculatePortfolioData(updatedAssets)
                 _uiState.value = _uiState.value.copy(
+                    assets = updatedAssets,
                     totalPortfolioValue = portfolioData.totalValue,
                     totalInvestment = portfolioData.totalInvestment,
                     profitLoss = portfolioData.profitLoss,
@@ -181,6 +184,7 @@ class AssetsViewModel @Inject constructor(
     private fun updateAssetPrices(assets: List<Asset>): List<Asset> {
         return assets.map { asset ->
             val currentPrice = marketDataManager.getCurrentPrice(asset.type)
+            Log.d(TAG, "Updating ${asset.name}: old price=${asset.currentPrice}, new price=$currentPrice")
             asset.copy(
                 currentPrice = currentPrice,
                 lastUpdated = Date()

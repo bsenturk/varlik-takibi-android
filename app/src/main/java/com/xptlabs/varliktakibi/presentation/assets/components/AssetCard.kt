@@ -91,13 +91,6 @@ fun AssetCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
-                // Current price per unit
-                Text(
-                    text = "Güncel: ${formatCurrency(asset.currentPrice)}/${asset.unit}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                )
             }
 
             // Value and Actions
