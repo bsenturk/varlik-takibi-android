@@ -91,12 +91,19 @@ fun AssetCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+
+                // Current price per unit
+                Text(
+                    text = "Güncel: ${formatCurrency(asset.currentPrice)}/${asset.unit}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
             }
 
             // Value and Actions
             Column(
                 horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = formatCurrency(asset.totalValue),
@@ -104,6 +111,27 @@ fun AssetCard(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
+
+                // Profit/Loss indicator
+                if (kotlin.math.abs(asset.profitLoss) > 0.01) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (asset.profitLoss >= 0) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = if (asset.profitLoss >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                        )
+                        Text(
+                            text = "${if (asset.profitLoss >= 0) "+" else ""}${String.format("%.1f", asset.profitLossPercentage)}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = if (asset.profitLoss >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
+                        )
+                    }
+                }
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
