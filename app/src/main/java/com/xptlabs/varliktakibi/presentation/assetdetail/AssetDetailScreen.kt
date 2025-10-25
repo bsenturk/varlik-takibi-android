@@ -14,10 +14,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.xptlabs.varliktakibi.MainActivity
 import com.xptlabs.varliktakibi.data.local.entities.TransactionType
 import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
@@ -35,7 +37,21 @@ fun AssetDetailScreen(
     navController: NavController,
     viewModel: AssetDetailViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val adMobManager = (context as? MainActivity)?.adMobManager
+    val activity = context as? android.app.Activity
     val uiState by viewModel.uiState.collectAsState()
+
+    // Show interstitial ad when screen is opened
+    LaunchedEffect(Unit) {
+        activity?.let { act ->
+            adMobManager?.let { manager ->
+                if (manager.isInterstitialAdReady()) {
+                    manager.showInterstitialAd(act)
+                }
+            }
+        }
+    }
 
     LaunchedEffect(assetId) {
         viewModel.loadAssetDetail(assetId)

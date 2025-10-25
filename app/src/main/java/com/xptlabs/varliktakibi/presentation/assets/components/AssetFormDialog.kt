@@ -16,8 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.xptlabs.varliktakibi.ads.AdMobManager
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.models.AssetType
 import com.xptlabs.varliktakibi.presentation.components.GradientButton
@@ -30,9 +32,21 @@ fun AssetFormDialog(
     asset: Asset? = null, // null means adding new asset
     onDismiss: () -> Unit,
     onSave: (Asset) -> Unit,
-    marketDataManager: MarketDataManager
+    marketDataManager: MarketDataManager,
+    adMobManager: AdMobManager
 ) {
+    val context = LocalContext.current
+    val activity = context as? android.app.Activity
     val isEditMode = asset != null
+
+    // Show interstitial ad when dialog is shown
+    LaunchedEffect(Unit) {
+        activity?.let {
+            if (adMobManager.isInterstitialAdReady()) {
+                adMobManager.showInterstitialAd(it)
+            }
+        }
+    }
 
     var selectedAssetType by remember { mutableStateOf(asset?.type ?: AssetType.GOLD) }
     var amount by remember { mutableStateOf(asset?.amount?.let { formatAmountForEditing(it) } ?: "") }

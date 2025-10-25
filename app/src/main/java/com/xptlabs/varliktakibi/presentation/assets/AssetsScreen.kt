@@ -32,6 +32,7 @@ import androidx.navigation.NavController
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.xptlabs.varliktakibi.domain.models.Asset
+import com.xptlabs.varliktakibi.ads.AdMobManager
 import com.xptlabs.varliktakibi.presentation.components.GradientButton
 import com.xptlabs.varliktakibi.presentation.components.IconWithBackground
 import com.xptlabs.varliktakibi.presentation.assets.components.AssetFormDialog
@@ -52,6 +53,8 @@ fun AssetsScreen(
     viewModel: AssetsViewModel = hiltViewModel(),
     modifier: Modifier = Modifier  // Bu parametreyi ekleyin
 ) {
+    val context = LocalContext.current
+    val adMobManager = (context as? MainActivity)?.adMobManager
     val uiState by viewModel.uiState.collectAsState()
     var showAddAssetDialog by remember { mutableStateOf(false) }
     var editingAsset by remember { mutableStateOf<Asset?>(null) }
@@ -164,23 +167,26 @@ fun AssetsScreen(
 
     // Add/Edit Asset Dialog
     if (showAddAssetDialog || editingAsset != null) {
-        AssetFormDialog(
-            asset = editingAsset,
-            onDismiss = {
-                showAddAssetDialog = false
-                editingAsset = null
-            },
-            onSave = { asset ->
-                if (editingAsset != null) {
-                    viewModel.updateAsset(asset)
-                } else {
-                    viewModel.addOrUpdateAsset(asset)
-                }
-                showAddAssetDialog = false
-                editingAsset = null
-            },
-            marketDataManager = viewModel.marketDataManager
-        )
+        adMobManager?.let { manager ->
+            AssetFormDialog(
+                asset = editingAsset,
+                onDismiss = {
+                    showAddAssetDialog = false
+                    editingAsset = null
+                },
+                onSave = { asset ->
+                    if (editingAsset != null) {
+                        viewModel.updateAsset(asset)
+                    } else {
+                        viewModel.addOrUpdateAsset(asset)
+                    }
+                    showAddAssetDialog = false
+                    editingAsset = null
+                },
+                marketDataManager = viewModel.marketDataManager,
+                adMobManager = manager
+            )
+        }
     }
 }
 
