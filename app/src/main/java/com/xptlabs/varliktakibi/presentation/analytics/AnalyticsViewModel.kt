@@ -240,9 +240,7 @@ class AnalyticsViewModel @Inject constructor(
                 (profitLoss / totalInvestment) * 100
             } else 0.0
 
-            val hasProfitLossData = totalInvestment > 0 &&
-                    totalValue > 0 &&
-                    abs(profitLoss) > 0.01
+            val hasProfitLossData = totalInvestment > 0 && totalValue > 0
 
             // Calculate asset distributions
             val distributions = calculateAssetDistributions(assets, totalValue)
