@@ -224,10 +224,22 @@ class AnalyticsViewModel @Inject constructor(
         }
 
         try {
-            // Calculate totals in TRY
-            val totalValueTRY = assets.sumOf { it.totalValue }
-            val totalInvestmentTRY = assets.sumOf { it.totalInvestment }
+            // Update asset prices with current market data
+            val updatedAssets = assets.map { asset ->
+                val currentPrice = marketDataManager.getCurrentPrice(asset.type)
+                Log.d(TAG, "Updating ${asset.name}: old price=${asset.currentPrice}, new price=$currentPrice")
+                asset.copy(
+                    currentPrice = currentPrice,
+                    lastUpdated = java.util.Date()
+                )
+            }
+
+            // Calculate totals in TRY with updated prices
+            val totalValueTRY = updatedAssets.sumOf { it.totalValue }
+            val totalInvestmentTRY = updatedAssets.sumOf { it.totalInvestment }
             val profitLossTRY = totalValueTRY - totalInvestmentTRY
+
+            Log.d(TAG, "Analytics totals (TRY): Investment=$totalInvestmentTRY, Value=$totalValueTRY, P/L=$profitLossTRY")
 
             // Convert to selected currency
             val selectedCurrency = _uiState.value.selectedCurrency
@@ -245,8 +257,8 @@ class AnalyticsViewModel @Inject constructor(
                     totalValueTRY > 0 &&
                     abs(profitLossTRY) > 0.01
 
-            // Calculate asset distributions
-            val distributions = calculateAssetDistributions(assets, totalValue)
+            // Calculate asset distributions with updated assets
+            val distributions = calculateAssetDistributions(updatedAssets, totalValue)
 
             Log.d(TAG, "Analytics calculated - Total Value: $totalValue, Investment: $totalInvestment, P/L: $profitLoss")
 
