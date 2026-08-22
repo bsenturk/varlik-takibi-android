@@ -35,6 +35,9 @@ play-services-ads = "24.0.0"
 # Core Splashscreen
 core-splashscreen = "1.0.1"
 
+# Charts
+vico = "1.14.0"
+
 [libraries]
 # Core Android
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -106,6 +109,11 @@ firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashly
 # AdMob
 play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "play-services-ads" }
 
+# Vico Charts
+vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
+vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+vico-core = { group = "com.patrykandpatrick.vico", name = "core", version.ref = "vico" }
+
 [bundles]
 compose = [
     "androidx-ui",
@@ -144,6 +152,12 @@ accompanist = [
     "accompanist-permissions",
     "accompanist-systemuicontroller",
     "accompanist-swiperefresh"
+]
+
+vico = [
+    "vico-compose",
+    "vico-compose-m3",
+    "vico-core"
 ]
 
 [plugins]

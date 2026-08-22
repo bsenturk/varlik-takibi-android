@@ -2,8 +2,8 @@ package com.xptlabs.varliktakibi.data.remote
 
 import android.util.Log
 import com.xptlabs.varliktakibi.data.local.entities.RateEntity
-import com.xptlabs.varliktakibi.data.remote.parser.AssetTrackerHtmlParser
-import com.xptlabs.varliktakibi.data.remote.scraper.AssetTrackerWebService
+import com.xptlabs.varliktakibi.data.remote.api.FinanceApiService
+import com.xptlabs.varliktakibi.data.remote.mapper.FinanceApiMapper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -11,54 +11,68 @@ import javax.inject.Singleton
 
 @Singleton
 class AssetTrackerRemoteDataSource @Inject constructor(
-    @GoldWebService private val goldWebService: AssetTrackerWebService,
-    @CurrencyWebService private val currencyWebService: AssetTrackerWebService,
-    private val htmlParser: AssetTrackerHtmlParser
+    private val financeApiService: FinanceApiService
 ) {
 
     companion object {
         private const val TAG = "RemoteDataSource"
     }
 
-    suspend fun getGoldRates(): Result<List<RateEntity>> = withContext(Dispatchers.IO) {
+    /**
+     * Fetch all rates from the new Finance API
+     * Replaces both getGoldRates() and getCurrencyRates()
+     */
+    suspend fun getAllRates(): Result<List<RateEntity>> = withContext(Dispatchers.IO) {
         try {
-            Log.d(TAG, "Fetching gold rates from https://altin.doviz.com")
-            val response = goldWebService.getGoldRates()
+            Log.d(TAG, "Fetching rates from https://finance.truncgil.com/api/today.json")
+            val response = financeApiService.getTodayRates()
+
+            Log.d(TAG, "Response code: ${response.code()}")
+            Log.d(TAG, "Response successful: ${response.isSuccessful}")
+            Log.d(TAG, "Response body is null: ${response.body() == null}")
+
+            // Log raw response for debugging
+            response.raw().body?.let { rawBody ->
+                try {
+                    val rawString = rawBody.string()
+                    Log.d(TAG, "Raw response body (first 500 chars): ${rawString.take(500)}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Could not read raw body: ${e.message}")
+                }
+            }
+
             if (response.isSuccessful && response.body() != null) {
-                Log.d(TAG, "Successfully fetched gold rates HTML, parsing...")
-                val rates = htmlParser.parseGoldRates(response.body()!!)
-                Log.d(TAG, "Parsed ${rates.size} gold rates")
+                Log.d(TAG, "Successfully fetched rates from API")
+                val rates = FinanceApiMapper.mapToRateEntities(response.body()!!)
+                Log.d(TAG, "Mapped ${rates.size} rates from API")
                 Result.success(rates)
             } else {
-                val error = "Failed to fetch gold rates: ${response.code()}"
+                val errorBody = response.errorBody()?.string()
+                val error = "Failed to fetch rates: ${response.code()}, error: $errorBody"
                 Log.e(TAG, error)
                 Result.failure(Exception(error))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Exception while fetching gold rates", e)
+            Log.e(TAG, "Exception while fetching rates from API: ${e.message}", e)
+            Log.e(TAG, "Exception type: ${e.javaClass.simpleName}")
+            e.printStackTrace()
             Result.failure(e)
         }
     }
 
-    suspend fun getCurrencyRates(): Result<List<RateEntity>> = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "Fetching currency rates from https://kur.doviz.com")
-            val response = currencyWebService.getCurrencyRates()
-            if (response.isSuccessful && response.body() != null) {
-                Log.d(TAG, "Successfully fetched currency rates HTML, parsing...")
-                val rates = htmlParser.parseCurrencyRates(response.body()!!)
-                Log.d(TAG, "Parsed ${rates.size} currency rates")
-                Result.success(rates)
-            } else {
-                val error = "Failed to fetch currency rates: ${response.code()}"
-                Log.e(TAG, error)
-                Result.failure(Exception(error))
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception while fetching currency rates", e)
-            Result.failure(e)
-        }
-    }
+    /**
+     * Legacy method - delegates to getAllRates()
+     * @deprecated Use getAllRates() instead
+     */
+    @Deprecated("Use getAllRates() instead", ReplaceWith("getAllRates()"))
+    suspend fun getGoldRates(): Result<List<RateEntity>> = getAllRates()
+
+    /**
+     * Legacy method - delegates to getAllRates()
+     * @deprecated Use getAllRates() instead
+     */
+    @Deprecated("Use getAllRates() instead", ReplaceWith("getAllRates()"))
+    suspend fun getCurrencyRates(): Result<List<RateEntity>> = getAllRates()
 }
 
 // Qualifiers for different web services

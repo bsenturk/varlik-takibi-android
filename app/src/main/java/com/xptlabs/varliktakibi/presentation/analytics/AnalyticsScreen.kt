@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.xptlabs.varliktakibi.BuildConfig
+import com.xptlabs.varliktakibi.domain.models.Currency
+import com.xptlabs.varliktakibi.utils.CurrencyConverter
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -81,7 +83,11 @@ fun AnalyticsScreen(
                 TotalPortfolioCard(
                     totalValue = uiState.totalValue,
                     profitLoss = uiState.profitLoss,
-                    profitLossPercentage = uiState.profitLossPercentage
+                    profitLossPercentage = uiState.profitLossPercentage,
+                    selectedCurrency = uiState.selectedCurrency,
+                    onCurrencyChange = { currency ->
+                        viewModel.setSelectedCurrency(currency)
+                    }
                 )
             }
 
@@ -92,7 +98,8 @@ fun AnalyticsScreen(
                         totalInvestment = uiState.totalInvestment,
                         currentValue = uiState.totalValue,
                         profitLoss = uiState.profitLoss,
-                        profitLossPercentage = uiState.profitLossPercentage
+                        profitLossPercentage = uiState.profitLossPercentage,
+                        selectedCurrency = uiState.selectedCurrency
                     )
                 }
             }
@@ -100,7 +107,8 @@ fun AnalyticsScreen(
             // Asset Distribution
             item {
                 AssetDistributionCard(
-                    distributions = uiState.assetDistributions
+                    distributions = uiState.assetDistributions,
+                    selectedCurrency = uiState.selectedCurrency
                 )
             }
 
@@ -116,7 +124,9 @@ fun AnalyticsScreen(
 private fun TotalPortfolioCard(
     totalValue: Double,
     profitLoss: Double,
-    profitLossPercentage: Double
+    profitLossPercentage: Double,
+    selectedCurrency: Currency,
+    onCurrencyChange: (Currency) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -142,7 +152,7 @@ private fun TotalPortfolioCard(
             )
 
             Text(
-                text = formatCurrency(totalValue),
+                text = CurrencyConverter.formatWithCurrency(totalValue, selectedCurrency),
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -169,7 +179,7 @@ private fun TotalPortfolioCard(
                     )
 
                     Text(
-                        text = "(${if (profitLoss >= 0) "+" else ""}${formatCurrency(profitLoss)})",
+                        text = "(${if (profitLoss >= 0) "+" else ""}${CurrencyConverter.formatWithCurrency(profitLoss, selectedCurrency)})",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -184,7 +194,8 @@ private fun ComparisonChart(
     totalInvestment: Double,
     currentValue: Double,
     profitLoss: Double,
-    profitLossPercentage: Double
+    profitLossPercentage: Double,
+    selectedCurrency: Currency
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -238,7 +249,7 @@ private fun ComparisonChart(
                     )
 
                     Text(
-                        text = formatCurrency(totalInvestment),
+                        text = CurrencyConverter.formatWithCurrency(totalInvestment, selectedCurrency),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFF2196F3),
@@ -270,7 +281,7 @@ private fun ComparisonChart(
                     )
 
                     Text(
-                        text = formatCurrency(currentValue),
+                        text = CurrencyConverter.formatWithCurrency(currentValue, selectedCurrency),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         color = barColor,
@@ -297,7 +308,7 @@ private fun ComparisonChart(
                         )
 
                         Text(
-                            text = formatCurrency(totalInvestment),
+                            text = CurrencyConverter.formatWithCurrency(totalInvestment, selectedCurrency),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF2196F3)
@@ -314,7 +325,7 @@ private fun ComparisonChart(
                         )
 
                         Text(
-                            text = formatCurrency(currentValue),
+                            text = CurrencyConverter.formatWithCurrency(currentValue, selectedCurrency),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface
@@ -338,7 +349,7 @@ private fun ComparisonChart(
                         )
 
                         Text(
-                            text = "${if (profitLoss >= 0) "+" else ""}${formatCurrency(profitLoss)}",
+                            text = "${if (profitLoss >= 0) "+" else ""}${CurrencyConverter.formatWithCurrency(profitLoss, selectedCurrency)}",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = if (profitLoss >= 0) Color(0xFF4CAF50) else Color(0xFFF44336)
@@ -391,7 +402,8 @@ private fun AnimatedBar(
 
 @Composable
 private fun AssetDistributionCard(
-    distributions: List<AssetDistribution>
+    distributions: List<AssetDistribution>,
+    selectedCurrency: Currency
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -431,7 +443,10 @@ private fun AssetDistributionCard(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     distributions.forEach { distribution ->
-                        DistributionItem(distribution = distribution)
+                        DistributionItem(
+                            distribution = distribution,
+                            selectedCurrency = selectedCurrency
+                        )
                     }
                 }
             }
@@ -441,7 +456,8 @@ private fun AssetDistributionCard(
 
 @Composable
 private fun DistributionItem(
-    distribution: AssetDistribution
+    distribution: AssetDistribution,
+    selectedCurrency: Currency
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -477,7 +493,7 @@ private fun DistributionItem(
             )
 
             Text(
-                text = formatCurrency(distribution.value),
+                text = CurrencyConverter.formatWithCurrency(distribution.value, selectedCurrency),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

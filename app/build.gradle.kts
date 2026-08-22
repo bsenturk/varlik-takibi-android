@@ -45,6 +45,7 @@ android {
             // AdMob Production IDs
             buildConfigField("String", "ADMOB_APP_OPEN_ID", "\"ca-app-pub-2545255000258244/9897563908\"")
             buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-2545255000258244/2703290545\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-2545255000258244/4022429115\"")
         }
 
         debug {
@@ -59,6 +60,7 @@ android {
             // AdMob Test IDs for debug
             buildConfigField("String", "ADMOB_APP_OPEN_ID", "\"ca-app-pub-3940256099942544/9257395921\"")
             buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-3940256099942544/6300978111\"")
+            buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-3940256099942544/1033173712\"")
         }
     }
 
@@ -138,4 +140,7 @@ dependencies {
 
     // AdMob
     implementation(libs.play.services.ads)
+
+    // Vico Charts
+    implementation(libs.bundles.vico)
 }

@@ -3,6 +3,7 @@ package com.xptlabs.varliktakibi.managers
 import android.util.Log
 import com.xptlabs.varliktakibi.data.local.entities.RateEntity
 import com.xptlabs.varliktakibi.domain.models.AssetType
+import com.xptlabs.varliktakibi.domain.models.Currency
 import com.xptlabs.varliktakibi.domain.repository.RateRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,10 @@ class MarketDataManager @Inject constructor(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    // Shared currency selection state
+    private val _selectedCurrency = MutableStateFlow(Currency.TRY)
+    val selectedCurrency: StateFlow<Currency> = _selectedCurrency.asStateFlow()
 
     init {
         Log.d(TAG, "MarketDataManager initialized")
@@ -116,16 +121,21 @@ class MarketDataManager @Inject constructor(
         Log.d(TAG, "Looking for gold rate in ${goldRates.size} rates for $assetType")
 
         val goldId = when (assetType) {
-            AssetType.GOLD -> "GOLD_GRAM"
-            AssetType.GOLD_QUARTER -> "GOLD_QUARTER"
-            AssetType.GOLD_HALF -> "GOLD_HALF"
-            AssetType.GOLD_FULL -> "GOLD_FULL"
-            AssetType.GOLD_REPUBLIC -> "GOLD_REPUBLIC"
-            AssetType.GOLD_ATA -> "GOLD_ATA"
-            AssetType.GOLD_RESAT -> "GOLD_RESAT"
-            AssetType.GOLD_HAMIT -> "GOLD_HAMIT"
-            AssetType.GOLD_BESLI -> "GOLD_BESLI"
-            AssetType.SILVER -> "SILVER_GRAM"
+            AssetType.GOLD -> "GRA"
+            AssetType.GOLD_QUARTER -> "CEYREK"
+            AssetType.GOLD_HALF -> "YARIM"
+            AssetType.GOLD_FULL -> "TAM"
+            AssetType.GOLD_REPUBLIC -> "CUMHURIYET"
+            AssetType.GOLD_ATA -> "ATA"
+            AssetType.GOLD_RESAT -> "RESAT"
+            AssetType.GOLD_HAMIT -> "HAMIT"
+            AssetType.GOLD_BESLI -> "BESLI"
+            AssetType.GOLD_GREMSE -> "GREMSE"
+            AssetType.GOLD_14_CARAT -> "14AYAR"
+            AssetType.GOLD_18_CARAT -> "18AYAR"
+            AssetType.GOLD_TWO_HALF -> "IKIbucuk"
+            AssetType.GOLD_22_CARAT_BRACELET -> "22AYAR"
+            AssetType.SILVER -> "GUMUS"
             else -> return null
         }
 
@@ -162,7 +172,9 @@ class MarketDataManager @Inject constructor(
         return when (assetType) {
             AssetType.GOLD, AssetType.GOLD_QUARTER, AssetType.GOLD_HALF,
             AssetType.GOLD_FULL, AssetType.GOLD_REPUBLIC, AssetType.GOLD_ATA,
-            AssetType.GOLD_RESAT, AssetType.GOLD_HAMIT, AssetType.GOLD_BESLI, AssetType.SILVER -> true
+            AssetType.GOLD_RESAT, AssetType.GOLD_HAMIT, AssetType.GOLD_BESLI,
+            AssetType.GOLD_GREMSE, AssetType.GOLD_14_CARAT, AssetType.GOLD_18_CARAT,
+            AssetType.GOLD_TWO_HALF, AssetType.GOLD_22_CARAT_BRACELET, AssetType.SILVER -> true
             else -> false
         }
     }
@@ -185,6 +197,11 @@ class MarketDataManager @Inject constructor(
             AssetType.GOLD_RESAT -> 3180.25
             AssetType.GOLD_HAMIT -> 3175.50
             AssetType.GOLD_BESLI -> 3200.00
+            AssetType.GOLD_GREMSE -> 3180.00
+            AssetType.GOLD_14_CARAT -> 2400.00
+            AssetType.GOLD_18_CARAT -> 2600.00
+            AssetType.GOLD_TWO_HALF -> 1580.00
+            AssetType.GOLD_22_CARAT_BRACELET -> 2700.00
             AssetType.SILVER -> 40.50
             AssetType.USD -> 34.85
             AssetType.EUR -> 36.42
@@ -204,5 +221,11 @@ class MarketDataManager @Inject constructor(
             isCurrencyAsset(assetType) -> getCurrencyRate(assetType)
             else -> null
         }
+    }
+
+    // Set selected currency (shared across app)
+    fun setSelectedCurrency(currency: Currency) {
+        Log.d(TAG, "Currency changed to: ${currency.code}")
+        _selectedCurrency.value = currency
     }
 }

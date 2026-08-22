@@ -11,6 +11,8 @@ import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.appopen.AppOpenAd
+import com.google.android.gms.ads.interstitial.InterstitialAd
+import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -35,6 +37,7 @@ class AdMobManager @Inject constructor(
         private const val TAG = "AdMobManager"
         private const val AD_UNIT_ID_APP_OPEN = BuildConfig.ADMOB_APP_OPEN_ID
         private const val AD_UNIT_ID_BANNER = BuildConfig.ADMOB_BANNER_ID
+        private const val AD_UNIT_ID_INTERSTITIAL = BuildConfig.ADMOB_INTERSTITIAL_ID
     }
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -54,6 +57,12 @@ class AdMobManager @Inject constructor(
     private val _appOpenAdLoaded = MutableStateFlow(false)
     val appOpenAdLoaded: StateFlow<Boolean> = _appOpenAdLoaded
 
+    // Interstitial Ad
+    private var interstitialAd: InterstitialAd? = null
+    private var isLoadingInterstitial = false
+    private val _interstitialAdLoaded = MutableStateFlow(false)
+    val interstitialAdLoaded: StateFlow<Boolean> = _interstitialAdLoaded
+
     init {
         initializeMobileAds()
     }
@@ -65,11 +74,12 @@ class AdMobManager @Inject constructor(
             isInitialized = true
             _isAdMobInitialized.value = true
 
-            // Load app open ad after initialization
+            // Load ads after initialization
             scope.launch {
                 // Small delay to ensure initialization is complete
                 delay(1000)
                 loadAppOpenAd()
+                loadInterstitialAd()
             }
 
             // Log AdMob initialization
@@ -203,6 +213,118 @@ class AdMobManager @Inject constructor(
         val dateDifference = Date().time - loadTime
         val numMilliSecondsPerHour: Long = 3600000
         return dateDifference < numMilliSecondsPerHour * numHours
+    }
+
+    // Interstitial Ad methods
+    fun loadInterstitialAd() {
+        if (isLoadingInterstitial || interstitialAd != null) {
+            Log.d(TAG, "Interstitial ad already loading or loaded")
+            return
+        }
+
+        if (!isInitialized) {
+            Log.d(TAG, "AdMob not initialized yet, skipping interstitial ad load")
+            return
+        }
+
+        Log.d(TAG, "Loading interstitial ad with unit ID: $AD_UNIT_ID_INTERSTITIAL")
+        isLoadingInterstitial = true
+
+        val request = AdRequest.Builder().build()
+
+        InterstitialAd.load(
+            context,
+            AD_UNIT_ID_INTERSTITIAL,
+            request,
+            object : InterstitialAdLoadCallback() {
+                override fun onAdLoaded(ad: InterstitialAd) {
+                    Log.d(TAG, "Interstitial ad loaded successfully")
+                    interstitialAd = ad
+                    isLoadingInterstitial = false
+                    _interstitialAdLoaded.value = true
+
+                    // Analytics
+                    analyticsManager.logAdLoaded("interstitial", AD_UNIT_ID_INTERSTITIAL)
+                }
+
+                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                    Log.e(TAG, "Interstitial ad failed to load: ${loadAdError.message}, code: ${loadAdError.code}")
+                    interstitialAd = null
+                    isLoadingInterstitial = false
+                    _interstitialAdLoaded.value = false
+
+                    // Analytics
+                    analyticsManager.logAdFailedToLoad(
+                        "interstitial",
+                        AD_UNIT_ID_INTERSTITIAL,
+                        loadAdError.code,
+                        loadAdError.message
+                    )
+                }
+            }
+        )
+    }
+
+    fun showInterstitialAd(
+        activity: Activity,
+        onAdDismissed: () -> Unit = {}
+    ) {
+        val ad = interstitialAd
+        if (ad == null) {
+            Log.d(TAG, "Interstitial ad not loaded yet")
+            onAdDismissed()
+            return
+        }
+
+        Log.d(TAG, "Showing interstitial ad")
+
+        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+            override fun onAdDismissedFullScreenContent() {
+                Log.d(TAG, "Interstitial ad dismissed")
+                interstitialAd = null
+                _interstitialAdLoaded.value = false
+
+                // Analytics
+                analyticsManager.logAdClosed("interstitial", AD_UNIT_ID_INTERSTITIAL)
+
+                // Load next ad
+                loadInterstitialAd()
+
+                // Callback
+                onAdDismissed()
+            }
+
+            override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                Log.e(TAG, "Interstitial ad failed to show: ${adError.message}")
+                interstitialAd = null
+                _interstitialAdLoaded.value = false
+
+                // Analytics
+                analyticsManager.logError(
+                    errorType = "interstitial_ad_show_failed",
+                    errorMessage = adError.message
+                )
+
+                // Load next ad
+                loadInterstitialAd()
+
+                // Callback
+                onAdDismissed()
+            }
+
+            override fun onAdShowedFullScreenContent() {
+                Log.d(TAG, "Interstitial ad showed")
+
+                // Analytics
+                analyticsManager.logAdShown("interstitial", AD_UNIT_ID_INTERSTITIAL)
+            }
+        }
+
+        ad.show(activity)
+    }
+
+    fun isInterstitialAdReady(): Boolean {
+        return interstitialAd != null
     }
 
     // Activity lifecycle callbacks

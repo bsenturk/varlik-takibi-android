@@ -16,8 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.xptlabs.varliktakibi.ads.AdMobManager
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.models.AssetType
 import com.xptlabs.varliktakibi.presentation.components.GradientButton
@@ -30,16 +32,33 @@ fun AssetFormDialog(
     asset: Asset? = null, // null means adding new asset
     onDismiss: () -> Unit,
     onSave: (Asset) -> Unit,
-    marketDataManager: MarketDataManager
+    marketDataManager: MarketDataManager,
+    adMobManager: AdMobManager
 ) {
+    val context = LocalContext.current
+    val activity = context as? android.app.Activity
     val isEditMode = asset != null
+
+    // Show interstitial ad when dialog is shown
+    LaunchedEffect(Unit) {
+        activity?.let {
+            if (adMobManager.isInterstitialAdReady()) {
+                adMobManager.showInterstitialAd(it)
+            }
+        }
+    }
 
     var selectedAssetType by remember { mutableStateOf(asset?.type ?: AssetType.GOLD) }
     var amount by remember { mutableStateOf(asset?.amount?.let { formatAmountForEditing(it) } ?: "") }
+    var customPurchaseRate by remember { mutableStateOf("") } // Opsiyonel satın alınan kur
     var showAssetTypeDropdown by remember { mutableStateOf(false) }
 
     // Güncel kur ve toplam değer hesaplama
     val currentRate = getCurrentRate(selectedAssetType, marketDataManager)
+
+    // Purchase rate: Eğer custom girilmişse onu, yoksa güncel kuru kullan
+    val purchaseRate = customPurchaseRate.toDoubleOrNull() ?: currentRate
+
     val totalValue = calculateTotalValue(amount, currentRate)
 
     val isValidInput = amount.isNotBlank() && amount.toDoubleOrNull() != null && amount.toDoubleOrNull()!! > 0
@@ -207,6 +226,68 @@ fun AssetFormDialog(
                     )
                 }
 
+                // Purchase Rate Input (Optional)
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Satın Alınan Kur",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "(Opsiyonel)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = customPurchaseRate,
+                        onValueChange = { newValue ->
+                            // Allow only numbers and decimal point
+                            val filtered = newValue.filter { it.isDigit() || it == '.' || it == ',' }
+                                .replace(',', '.')
+
+                            // Ensure only one decimal point
+                            val dotCount = filtered.count { it == '.' }
+                            if (dotCount <= 1) {
+                                // Limit decimal places to 2
+                                val parts = filtered.split('.')
+                                customPurchaseRate = if (parts.size == 2 && parts[1].length > 2) {
+                                    "${parts[0]}.${parts[1].take(2)}"
+                                } else {
+                                    filtered
+                                }
+                            }
+                        },
+                        label = { Text("Satın alınan kur (boş bırakılırsa güncel kur kullanılır)") },
+                        suffix = { Text("₺") },
+                        placeholder = { Text(formatCurrency(currentRate)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        supportingText = {
+                            Text(
+                                text = if (customPurchaseRate.isBlank()) {
+                                    "Boş bırakılırsa güncel kur (${formatCurrency(currentRate)}) kullanılacak"
+                                } else {
+                                    "Kar/Zarar hesaplaması bu kurdan yapılacak"
+                                },
+                                color = if (customPurchaseRate.isBlank()) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.primary
+                                }
+                            )
+                        }
+                    )
+                }
+
                 // Current Rate Section
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -291,6 +372,7 @@ fun AssetFormDialog(
                                 unit = selectedAssetType.unit,
                                 purchasePrice = currentRate,
                                 currentPrice = currentRate,
+                                purchaseRate = purchaseRate, // Kullanıcının girdiği kur veya güncel kur
                                 dateAdded = asset?.dateAdded ?: Date(),
                                 lastUpdated = Date()
                             )
@@ -344,7 +426,12 @@ private fun getFormAssetIcon(assetType: AssetType): androidx.compose.ui.graphics
         AssetType.GOLD_ATA,
         AssetType.GOLD_RESAT,
         AssetType.GOLD_HAMIT,
-        AssetType.GOLD_BESLI -> Icons.Default.Hive
+        AssetType.GOLD_BESLI,
+        AssetType.GOLD_GREMSE,
+        AssetType.GOLD_14_CARAT,
+        AssetType.GOLD_18_CARAT,
+        AssetType.GOLD_TWO_HALF,
+        AssetType.GOLD_22_CARAT_BRACELET -> Icons.Default.Hive
 
         AssetType.SILVER -> Icons.Default.Circle
         AssetType.USD -> Icons.Default.AttachMoney
@@ -365,7 +452,12 @@ private fun getFormAssetColor(assetType: AssetType): androidx.compose.ui.graphic
         AssetType.GOLD_ATA,
         AssetType.GOLD_RESAT,
         AssetType.GOLD_HAMIT,
-        AssetType.GOLD_BESLI -> Color(0xFFFFD700) // Altın rengi
+        AssetType.GOLD_BESLI,
+        AssetType.GOLD_GREMSE,
+        AssetType.GOLD_14_CARAT,
+        AssetType.GOLD_18_CARAT,
+        AssetType.GOLD_TWO_HALF,
+        AssetType.GOLD_22_CARAT_BRACELET -> Color(0xFFFFD700) // Altın rengi
 
         AssetType.SILVER -> Color(0xFFC0C0C0)
         AssetType.USD -> Color(0xFF4CAF50) // Yeşil

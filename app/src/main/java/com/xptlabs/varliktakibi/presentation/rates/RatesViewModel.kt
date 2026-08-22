@@ -134,22 +134,28 @@ class RatesViewModel @Inject constructor(
 
     private fun updateGoldRates(rates: List<RateEntity>): List<RateDisplayModel> {
         val goldNames = mapOf(
-            "GOLD_GRAM" to "Gram Altın",
-            "GOLD_QUARTER" to "Çeyrek Altın",
-            "GOLD_HALF" to "Yarım Altın",
-            "GOLD_FULL" to "Tam Altın",
-            "GOLD_REPUBLIC" to "Cumhuriyet Altını",
-            "GOLD_ATA" to "Ata Altın",
-            "GOLD_BESLI" to "Beşli Altın",
-            "GOLD_RESAT" to "Reşat Altın",
-            "GOLD_HAMIT" to "Hamit Altın",
-            "SILVER_GRAM" to "Gram Gümüş"
+            "GRA" to "Gram Altın",
+            "CEYREK" to "Çeyrek Altın",
+            "YARIM" to "Yarım Altın",
+            "TAM" to "Tam Altın",
+            "CUMHURIYET" to "Cumhuriyet Altını",
+            "ATA" to "Ata Altın",
+            "BESLI" to "Beşli Altın",
+            "RESAT" to "Reşat Altın",
+            "HAMIT" to "Hamit Altın",
+            "GREMSE" to "Gremse",
+            "14AYAR" to "14 Ayar",
+            "18AYAR" to "18 Ayar",
+            "IKIbucuk" to "İki Buçuk Altın",
+            "22AYAR" to "22 Ayar Bilezik",
+            "GUMUS" to "Gram Gümüş"
         )
 
-        // Sabit sıralama: istenen sırayla
+        // Sabit sıralama: istenen sırayla (API'den gelen ID'lerle eşleşiyor)
         val goldOrder = listOf(
-            "GOLD_GRAM", "GOLD_QUARTER", "GOLD_HALF", "GOLD_FULL",
-            "GOLD_REPUBLIC", "GOLD_ATA", "GOLD_BESLI", "GOLD_RESAT", "GOLD_HAMIT", "SILVER_GRAM"
+            "GRA", "CEYREK", "YARIM", "TAM",
+            "CUMHURIYET", "ATA", "BESLI", "RESAT", "HAMIT",
+            "GREMSE", "14AYAR", "18AYAR", "IKIbucuk", "22AYAR", "GUMUS"
         )
 
         val rateMap = rates.associateBy { it.id }
@@ -161,8 +167,8 @@ class RatesViewModel @Inject constructor(
             RateDisplayModel(
                 id = rate.id,
                 title = title,
-                icon = if(id == "SILVER_GRAM") Icons.Default.Circle else Icons.Default.Hive,
-                iconColor = if (id == "SILVER_GRAM") Color(0xFFC0C0C0) else Color(0xFFFFD700),
+                icon = if(id == "GUMUS") Icons.Default.Circle else Icons.Default.Hive,
+                iconColor = if (id == "GUMUS") Color(0xFFC0C0C0) else Color(0xFFFFD700),
                 buyRate = formatPrice(rate.buyPrice),
                 sellRate = formatPrice(rate.sellPrice),
                 change = configureRateChangePercentage(rate.change),

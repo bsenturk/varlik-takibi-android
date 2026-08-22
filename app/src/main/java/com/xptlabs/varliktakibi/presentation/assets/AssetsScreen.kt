@@ -32,6 +32,7 @@ import androidx.navigation.NavController
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import com.xptlabs.varliktakibi.domain.models.Asset
+import com.xptlabs.varliktakibi.ads.AdMobManager
 import com.xptlabs.varliktakibi.presentation.components.GradientButton
 import com.xptlabs.varliktakibi.presentation.components.IconWithBackground
 import com.xptlabs.varliktakibi.presentation.assets.components.AssetFormDialog
@@ -39,6 +40,8 @@ import com.xptlabs.varliktakibi.presentation.assets.components.AssetCard
 import com.xptlabs.varliktakibi.presentation.navigation.Screen
 import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.MainActivity
+import com.xptlabs.varliktakibi.domain.models.Currency
+import com.xptlabs.varliktakibi.utils.CurrencyConverter
 import kotlin.math.abs
 
 // AssetsScreen.kt dosyasının başındaki composable fonksiyonu şu şekilde güncelleyin:
@@ -50,6 +53,8 @@ fun AssetsScreen(
     viewModel: AssetsViewModel = hiltViewModel(),
     modifier: Modifier = Modifier  // Bu parametreyi ekleyin
 ) {
+    val context = LocalContext.current
+    val adMobManager = (context as? MainActivity)?.adMobManager
     val uiState by viewModel.uiState.collectAsState()
     var showAddAssetDialog by remember { mutableStateOf(false) }
     var editingAsset by remember { mutableStateOf<Asset?>(null) }
@@ -80,6 +85,10 @@ fun AssetsScreen(
                 totalValue = uiState.totalPortfolioValue,
                 profitLoss = uiState.profitLoss,
                 profitLossPercentage = uiState.profitLossPercentage,
+                selectedCurrency = uiState.selectedCurrency,
+                onCurrencyChange = { currency ->
+                    viewModel.setSelectedCurrency(currency)
+                },
                 onAnalyticsClick = {
                     navController.navigate(Screen.Analytics.route)
                 }
@@ -108,6 +117,9 @@ fun AssetsScreen(
                     AssetListView(
                         assets = uiState.assets,
                         isRefreshing = uiState.isRefreshing,
+                        onAssetClick = { asset ->
+                            navController.navigate(Screen.AssetDetail.createRoute(asset.id))
+                        },
                         onEditAsset = { asset ->
                             editingAsset = asset
                         },
@@ -155,23 +167,26 @@ fun AssetsScreen(
 
     // Add/Edit Asset Dialog
     if (showAddAssetDialog || editingAsset != null) {
-        AssetFormDialog(
-            asset = editingAsset,
-            onDismiss = {
-                showAddAssetDialog = false
-                editingAsset = null
-            },
-            onSave = { asset ->
-                if (editingAsset != null) {
-                    viewModel.updateAsset(asset)
-                } else {
-                    viewModel.addOrUpdateAsset(asset)
-                }
-                showAddAssetDialog = false
-                editingAsset = null
-            },
-            marketDataManager = viewModel.marketDataManager
-        )
+        adMobManager?.let { manager ->
+            AssetFormDialog(
+                asset = editingAsset,
+                onDismiss = {
+                    showAddAssetDialog = false
+                    editingAsset = null
+                },
+                onSave = { asset ->
+                    if (editingAsset != null) {
+                        viewModel.updateAsset(asset)
+                    } else {
+                        viewModel.addOrUpdateAsset(asset)
+                    }
+                    showAddAssetDialog = false
+                    editingAsset = null
+                },
+                marketDataManager = viewModel.marketDataManager,
+                adMobManager = manager
+            )
+        }
     }
 }
 
@@ -210,8 +225,12 @@ private fun TotalValueHeader(
     totalValue: Double,
     profitLoss: Double,
     profitLossPercentage: Double,
+    selectedCurrency: Currency,
+    onCurrencyChange: (Currency) -> Unit,
     onAnalyticsClick: () -> Unit
 ) {
+    var showCurrencyMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -242,14 +261,88 @@ private fun TotalValueHeader(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "Toplam Varlık",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.9f)
-                    )
+                    // Title and Currency Selector
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Toplam Varlık",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+
+                        // Currency Selector Button
+                        Box {
+                            TextButton(
+                                onClick = { showCurrencyMenu = true },
+                                modifier = Modifier
+                                    .height(20.dp)
+                                    .background(
+                                        Color.White.copy(alpha = 0.2f),
+                                        RoundedCornerShape(10.dp)
+                                    ),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                            ) {
+                                Text(
+                                    text = selectedCurrency.code,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ArrowDropDown,
+                                    contentDescription = "Para Birimi Seç",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+
+                            // Currency Dropdown Menu
+                            DropdownMenu(
+                                expanded = showCurrencyMenu,
+                                onDismissRequest = { showCurrencyMenu = false }
+                            ) {
+                                Currency.values().forEach { currency ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = currency.symbol,
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                    text = "${currency.displayName} (${currency.code})",
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            onCurrencyChange(currency)
+                                            showCurrencyMenu = false
+                                        },
+                                        leadingIcon = {
+                                            if (currency == selectedCurrency) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Text(
-                        text = formatCurrency(totalValue),
+                        text = CurrencyConverter.formatWithCurrency(totalValue, selectedCurrency),
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
@@ -276,7 +369,7 @@ private fun TotalValueHeader(
                             )
 
                             Text(
-                                text = "(${if (profitLoss >= 0) "+" else ""}${formatCurrency(profitLoss)})",
+                                text = "(${if (profitLoss >= 0) "+" else ""}${CurrencyConverter.formatWithCurrency(profitLoss, selectedCurrency)})",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color.White.copy(alpha = 0.8f)
                             )
@@ -361,6 +454,7 @@ private fun EmptyStateView(
 private fun AssetListView(
     assets: List<Asset>,
     isRefreshing: Boolean,
+    onAssetClick: (Asset) -> Unit,
     onEditAsset: (Asset) -> Unit,
     onDeleteAsset: (Asset) -> Unit,
     onRefresh: () -> Unit
@@ -402,6 +496,7 @@ private fun AssetListView(
             ) { asset ->
                 AssetCard(
                     asset = asset,
+                    onClick = { onAssetClick(asset) },
                     onEdit = { onEditAsset(asset) },
                     onDelete = { onDeleteAsset(asset) }
                 )

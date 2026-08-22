@@ -7,7 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.models.AssetType
+import com.xptlabs.varliktakibi.domain.models.Currency
 import com.xptlabs.varliktakibi.domain.repository.AssetRepository
+import com.xptlabs.varliktakibi.managers.MarketDataManager
+import com.xptlabs.varliktakibi.utils.CurrencyConverter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -23,6 +26,7 @@ data class AnalyticsUiState(
     val profitLossPercentage: Double = 0.0,
     val hasProfitLossData: Boolean = false,
     val assetDistributions: List<AssetDistribution> = emptyList(),
+    val selectedCurrency: Currency = Currency.TRY,
     val errorMessage: String? = null
 )
 
@@ -36,7 +40,8 @@ data class AssetDistribution(
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     private val assetRepository: AssetRepository,
-    private val analyticsManager: FirebaseAnalyticsManager
+    private val analyticsManager: FirebaseAnalyticsManager,
+    private val marketDataManager: MarketDataManager
 ) : ViewModel() {
 
     companion object {
@@ -49,6 +54,7 @@ class AnalyticsViewModel @Inject constructor(
     init {
         Log.d(TAG, "AnalyticsViewModel initialized")
         observeAssets()
+        observeSelectedCurrency()
     }
 
     private fun observeAssets() {
@@ -65,6 +71,19 @@ class AnalyticsViewModel @Inject constructor(
                     Log.d(TAG, "Assets updated: ${assets.size} assets")
                     calculateAnalytics(assets)
                 }
+        }
+    }
+
+    private fun observeSelectedCurrency() {
+        viewModelScope.launch {
+            marketDataManager.selectedCurrency.collect { currency ->
+                Log.d(TAG, "Selected currency changed to: ${currency.code}")
+                _uiState.value = _uiState.value.copy(selectedCurrency = currency)
+
+                // Recalculate analytics with new currency
+                val assets = assetRepository.getAllAssets().first()
+                calculateAnalytics(assets)
+            }
         }
     }
 
@@ -162,6 +181,7 @@ class AnalyticsViewModel @Inject constructor(
             unit = type.unit,
             purchasePrice = purchasePrice,
             currentPrice = getCurrentPrice(type), // Use current market price
+            purchaseRate = purchasePrice, // Purchase rate equals purchase price
             dateAdded = java.util.Date(),
             lastUpdated = java.util.Date()
         )
@@ -179,6 +199,11 @@ class AnalyticsViewModel @Inject constructor(
             AssetType.GOLD_RESAT -> 3180.0
             AssetType.GOLD_HAMIT -> 3175.0
             AssetType.GOLD_BESLI -> 3200.00
+            AssetType.GOLD_GREMSE -> 3180.0
+            AssetType.GOLD_14_CARAT -> 2400.0
+            AssetType.GOLD_18_CARAT -> 2600.0
+            AssetType.GOLD_TWO_HALF -> 1580.0
+            AssetType.GOLD_22_CARAT_BRACELET -> 2700.0
             AssetType.SILVER -> 40.50
             AssetType.USD -> 34.5
             AssetType.EUR -> 38.0
@@ -199,20 +224,41 @@ class AnalyticsViewModel @Inject constructor(
         }
 
         try {
-            // Calculate totals
-            val totalValue = assets.sumOf { it.totalValue }
-            val totalInvestment = assets.sumOf { it.totalInvestment }
-            val profitLoss = totalValue - totalInvestment
+            // Update asset prices with current market data
+            val updatedAssets = assets.map { asset ->
+                val currentPrice = marketDataManager.getCurrentPrice(asset.type)
+                Log.d(TAG, "Updating ${asset.name}: old price=${asset.currentPrice}, new price=$currentPrice")
+                asset.copy(
+                    currentPrice = currentPrice,
+                    lastUpdated = java.util.Date()
+                )
+            }
+
+            // Calculate totals in TRY with updated prices
+            val totalValueTRY = updatedAssets.sumOf { it.totalValue }
+            val totalInvestmentTRY = updatedAssets.sumOf { it.totalInvestment }
+            val profitLossTRY = totalValueTRY - totalInvestmentTRY
+
+            Log.d(TAG, "Analytics totals (TRY): Investment=$totalInvestmentTRY, Value=$totalValueTRY, P/L=$profitLossTRY")
+
+            // Convert to selected currency
+            val selectedCurrency = _uiState.value.selectedCurrency
+            val currencyRates = marketDataManager.currencyRates.value
+
+            val totalValue = CurrencyConverter.convertToTargetCurrency(totalValueTRY, selectedCurrency, currencyRates)
+            val totalInvestment = CurrencyConverter.convertToTargetCurrency(totalInvestmentTRY, selectedCurrency, currencyRates)
+            val profitLoss = CurrencyConverter.convertToTargetCurrency(profitLossTRY, selectedCurrency, currencyRates)
             val profitLossPercentage = if (totalInvestment > 0) {
                 (profitLoss / totalInvestment) * 100
             } else 0.0
 
-            val hasProfitLossData = totalInvestment > 0 &&
-                    totalValue > 0 &&
-                    abs(profitLoss) > 0.01
+            // Check profit/loss in TRY to avoid currency conversion precision issues
+            val hasProfitLossData = totalInvestmentTRY > 0 &&
+                    totalValueTRY > 0 &&
+                    abs(profitLossTRY) > 0.01
 
-            // Calculate asset distributions
-            val distributions = calculateAssetDistributions(assets, totalValue)
+            // Calculate asset distributions with updated assets
+            val distributions = calculateAssetDistributions(updatedAssets, totalValue)
 
             Log.d(TAG, "Analytics calculated - Total Value: $totalValue, Investment: $totalInvestment, P/L: $profitLoss")
 
@@ -338,9 +384,14 @@ class AnalyticsViewModel @Inject constructor(
             AssetType.GOLD_ATA,
             AssetType.GOLD_RESAT,
             AssetType.GOLD_HAMIT,
-            AssetType.GOLD_BESLI -> Color(0xFFFFD700) // Gold
+            AssetType.GOLD_BESLI,
+            AssetType.GOLD_GREMSE,
+            AssetType.GOLD_14_CARAT,
+            AssetType.GOLD_18_CARAT,
+            AssetType.GOLD_TWO_HALF,
+            AssetType.GOLD_22_CARAT_BRACELET -> Color(0xFFFFD700) // Gold
 
-            AssetType.SILVER -> Color(0xFFC0C0C0)
+            AssetType.SILVER -> Color(0xFFC0C0C0) // Silver
             AssetType.USD -> Color(0xFF4CAF50) // Green
             AssetType.EUR -> Color(0xFF2196F3) // Blue
             AssetType.GBP -> Color(0xFF9C27B0) // Purple
@@ -350,6 +401,13 @@ class AnalyticsViewModel @Inject constructor(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    fun setSelectedCurrency(currency: Currency) {
+        Log.d(TAG, "Currency changed to: ${currency.code} from AnalyticsViewModel")
+        // Update shared currency state in MarketDataManager
+        // This will trigger observeSelectedCurrency in both AssetsViewModel and AnalyticsViewModel
+        marketDataManager.setSelectedCurrency(currency)
     }
 
     fun generateRandomTestData() {

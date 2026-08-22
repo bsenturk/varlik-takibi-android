@@ -5,10 +5,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.data.analytics.FirebaseAnalyticsManager
+import com.xptlabs.varliktakibi.data.local.entities.TransactionType
 import com.xptlabs.varliktakibi.domain.models.Asset
 import com.xptlabs.varliktakibi.domain.models.AssetType
+import com.xptlabs.varliktakibi.domain.models.Currency
 import com.xptlabs.varliktakibi.domain.repository.AssetRepository
+import com.xptlabs.varliktakibi.managers.AssetHistoryManager
 import com.xptlabs.varliktakibi.managers.MarketDataManager
+import com.xptlabs.varliktakibi.utils.CurrencyConverter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -26,14 +30,16 @@ data class AssetsUiState(
     val totalInvestment: Double = 0.0,
     val profitLoss: Double = 0.0,
     val profitLossPercentage: Double = 0.0,
-    val hasDataLoaded: Boolean = false
+    val hasDataLoaded: Boolean = false,
+    val selectedCurrency: Currency = Currency.TRY
 )
 
 @HiltViewModel
 class AssetsViewModel @Inject constructor(
     private val assetRepository: AssetRepository,
     private val analyticsManager: FirebaseAnalyticsManager,
-    val marketDataManager: MarketDataManager
+    val marketDataManager: MarketDataManager,
+    private val historyManager: AssetHistoryManager
 ) : ViewModel() {
 
     companion object {
@@ -47,6 +53,7 @@ class AssetsViewModel @Inject constructor(
         Log.d(TAG, "AssetsViewModel initialized")
         observeAssets()
         observeMarketData()
+        observeSelectedCurrency()
         loadInitialData()
     }
 
@@ -86,10 +93,11 @@ class AssetsViewModel @Inject constructor(
                     Log.d(TAG, "Assets updated: ${assets.size} assets")
 
                     // Update asset prices with current market data
-                    val portfolioData = calculatePortfolioData(assets)
+                    val updatedAssets = updateAssetPrices(assets)
+                    val portfolioData = calculatePortfolioData(updatedAssets)
 
                     _uiState.value = _uiState.value.copy(
-                        assets = assets,
+                        assets = updatedAssets,
                         isLoading = false,
                         hasDataLoaded = true,
                         errorMessage = null,
@@ -155,9 +163,31 @@ class AssetsViewModel @Inject constructor(
         }
     }
 
+    private fun observeSelectedCurrency() {
+        viewModelScope.launch {
+            marketDataManager.selectedCurrency.collect { currency ->
+                Log.d(TAG, "Selected currency changed to: ${currency.code}")
+                _uiState.value = _uiState.value.copy(selectedCurrency = currency)
+
+                // Recalculate portfolio with new currency
+                val currentAssets = assetRepository.getAllAssets().first()
+                val updatedAssets = updateAssetPrices(currentAssets)
+                val portfolioData = calculatePortfolioData(updatedAssets)
+                _uiState.value = _uiState.value.copy(
+                    assets = updatedAssets,
+                    totalPortfolioValue = portfolioData.totalValue,
+                    totalInvestment = portfolioData.totalInvestment,
+                    profitLoss = portfolioData.profitLoss,
+                    profitLossPercentage = portfolioData.profitLossPercentage
+                )
+            }
+        }
+    }
+
     private fun updateAssetPrices(assets: List<Asset>): List<Asset> {
         return assets.map { asset ->
             val currentPrice = marketDataManager.getCurrentPrice(asset.type)
+            Log.d(TAG, "Updating ${asset.name}: old price=${asset.currentPrice}, new price=$currentPrice")
             asset.copy(
                 currentPrice = currentPrice,
                 lastUpdated = Date()
@@ -194,6 +224,10 @@ class AssetsViewModel @Inject constructor(
                 )
 
                 assetRepository.insertAsset(updatedAsset)
+
+                // Record transaction and daily snapshot
+                historyManager.recordTransaction(updatedAsset, TransactionType.INITIAL)
+                historyManager.recordDailySnapshot(updatedAsset)
 
                 // Analytics
                 analyticsManager.logAssetAdded(
@@ -233,19 +267,25 @@ class AssetsViewModel @Inject constructor(
 
                 if (existingAsset != null) {
                     // Update existing asset - add amounts
+                    val weightedAvgPrice = calculateWeightedAveragePrice(
+                        existingAsset.amount, existingAsset.purchasePrice,
+                        newAsset.amount, newAsset.purchasePrice
+                    )
                     val combinedAsset = existingAsset.copy(
                         amount = existingAsset.amount + newAsset.amount,
                         // Calculate weighted average purchase price
-                        purchasePrice = calculateWeightedAveragePrice(
-                            existingAsset.amount, existingAsset.purchasePrice,
-                            newAsset.amount, newAsset.purchasePrice
-                        ),
+                        purchasePrice = weightedAvgPrice,
+                        purchaseRate = weightedAvgPrice, // Update purchase rate
                         currentPrice = currentPrice,
                         lastUpdated = Date()
                     )
 
                     Log.d(TAG, "Updating existing asset: ${existingAsset.amount} + ${newAsset.amount} = ${combinedAsset.amount}")
                     assetRepository.updateAsset(combinedAsset)
+
+                    // Record transaction and daily snapshot
+                    historyManager.recordTransaction(combinedAsset, TransactionType.ADD, existingAsset.amount)
+                    historyManager.recordDailySnapshot(combinedAsset)
 
                     // Analytics
                     analyticsManager.logAssetUpdated(
@@ -257,6 +297,10 @@ class AssetsViewModel @Inject constructor(
                     // Add new asset
                     Log.d(TAG, "Adding new asset: ${updatedAsset.name}")
                     assetRepository.insertAsset(updatedAsset)
+
+                    // Record transaction and daily snapshot
+                    historyManager.recordTransaction(updatedAsset, TransactionType.INITIAL)
+                    historyManager.recordDailySnapshot(updatedAsset)
 
                     // Analytics
                     analyticsManager.logAssetAdded(
@@ -292,6 +336,17 @@ class AssetsViewModel @Inject constructor(
 
                 assetRepository.updateAsset(updatedAsset)
 
+                // Record transaction and daily snapshot
+                existingAsset?.let { existing ->
+                    val transactionType = when {
+                        asset.amount > existing.amount -> TransactionType.ADD
+                        asset.amount < existing.amount -> TransactionType.REMOVE
+                        else -> TransactionType.EDIT
+                    }
+                    historyManager.recordTransaction(updatedAsset, transactionType, existing.amount)
+                    historyManager.recordDailySnapshot(updatedAsset)
+                }
+
                 // Analytics
                 existingAsset?.let { existing ->
                     analyticsManager.logAssetUpdated(
@@ -320,6 +375,9 @@ class AssetsViewModel @Inject constructor(
             try {
                 Log.d(TAG, "Deleting asset: ${asset.name}")
                 assetRepository.deleteAsset(asset)
+
+                // Delete asset history
+                historyManager.deleteAssetHistory(asset.id)
 
                 // Analytics
                 analyticsManager.logAssetDeleted(
@@ -492,6 +550,7 @@ class AssetsViewModel @Inject constructor(
             unit = type.unit,
             purchasePrice = purchasePrice,
             currentPrice = currentPrice,
+            purchaseRate = purchasePrice, // Initial purchase rate equals purchase price
             dateAdded = Date(),
             lastUpdated = Date()
         )
@@ -502,20 +561,42 @@ class AssetsViewModel @Inject constructor(
             return PortfolioData()
         }
 
-        val totalValue = assets.sumOf { it.totalValue }
-        val totalInvestment = assets.sumOf { it.totalInvestment }
-        val profitLoss = totalValue - totalInvestment
-        val profitLossPercentage = if (totalInvestment > 0) {
-            (profitLoss / totalInvestment) * 100
+        // Calculate in TRY first
+        val totalValueTRY = assets.sumOf { it.totalValue }
+        val totalInvestmentTRY = assets.sumOf { it.totalInvestment }
+        val profitLossTRY = totalValueTRY - totalInvestmentTRY
+        val profitLossPercentage = if (totalInvestmentTRY > 0) {
+            (profitLossTRY / totalInvestmentTRY) * 100
         } else 0.0
 
-        Log.d(TAG, "Portfolio calculated - Value: $totalValue, Investment: $totalInvestment, P/L: $profitLoss")
+        // Convert to selected currency
+        val selectedCurrency = _uiState.value.selectedCurrency
+        val currencyRates = marketDataManager.currencyRates.value
+
+        val totalValue = CurrencyConverter.convertToTargetCurrency(totalValueTRY, selectedCurrency, currencyRates)
+        val totalInvestment = CurrencyConverter.convertToTargetCurrency(totalInvestmentTRY, selectedCurrency, currencyRates)
+        val profitLoss = CurrencyConverter.convertToTargetCurrency(profitLossTRY, selectedCurrency, currencyRates)
+
+        Log.d(TAG, "Portfolio calculated - Value: $totalValue ${selectedCurrency.code}, Investment: $totalInvestment, P/L: $profitLoss")
 
         return PortfolioData(
             totalValue = totalValue,
             totalInvestment = totalInvestment,
             profitLoss = profitLoss,
             profitLossPercentage = profitLossPercentage
+        )
+    }
+
+    fun setSelectedCurrency(currency: Currency) {
+        Log.d(TAG, "Currency changed to: ${currency.code} from AssetsViewModel")
+        // Update shared currency state in MarketDataManager
+        // This will trigger observeSelectedCurrency in both AssetsViewModel and AnalyticsViewModel
+        marketDataManager.setSelectedCurrency(currency)
+
+        // Analytics
+        analyticsManager.logCustomEvent(
+            eventName = "currency_changed",
+            parameters = mapOf("currency" to currency.code)
         )
     }
 

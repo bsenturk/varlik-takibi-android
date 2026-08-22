@@ -21,6 +21,7 @@ data class AssetEntity(
     val unit: String,
     val purchasePrice: Double,
     val currentPrice: Double,
+    val purchaseRate: Double, // Rate at time of purchase (for P/L calculation)
     val dateAdded: Date,
     val lastUpdated: Date
 )
