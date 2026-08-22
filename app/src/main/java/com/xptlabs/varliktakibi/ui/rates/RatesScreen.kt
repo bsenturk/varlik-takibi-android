@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xptlabs.varliktakibi.core.format.TrFormat
 import com.xptlabs.varliktakibi.market.Instrument
 import com.xptlabs.varliktakibi.ui.common.AssetIconTile
+import com.xptlabs.varliktakibi.ui.common.SelectableChip
 import com.xptlabs.varliktakibi.ui.theme.AppColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,36 +67,18 @@ fun RatesScreen(viewModel: RatesViewModel = hiltViewModel()) {
             LiveIndicator(text = state.lastUpdateLabel, isLive = state.errorMessage == null)
         }
 
+        // Portföy ve Analiz sayfalarındaki chip şeridiyle aynı bileşen ve aynı
+        // yerleşim ölçüleri — üç sekme tek bir görsel dile oturuyor.
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(AppColors.subtleFill)
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             RatesTab.entries.forEach { tab ->
-                val isSelected = tab == state.tab
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(
-                            if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent
-                        )
-                        .clickable { viewModel.setTab(tab) }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = tab.label,
-                        fontSize = 14.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) MaterialTheme.colorScheme.onSurface
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                SelectableChip(
+                    label = tab.label,
+                    isSelected = tab == state.tab,
+                    onClick = { viewModel.setTab(tab) }
+                )
             }
         }
 
@@ -185,20 +168,14 @@ private fun RateCard(instrument: Instrument) {
             flag = instrument.flag,
             size = 40.dp
         )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = instrument.name,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = instrument.symbol,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            text = instrument.name,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = TrFormat.money(instrument.priceTry),

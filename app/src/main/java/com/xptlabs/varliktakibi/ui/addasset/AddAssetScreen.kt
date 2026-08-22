@@ -319,20 +319,14 @@ private fun InstrumentRow(instrument: Instrument, onClick: () -> Unit) {
             flag = instrument.flag,
             size = 38.dp
         )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = instrument.name,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = instrument.symbol,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            text = instrument.name,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
         Text(
             text = TrFormat.money(instrument.priceTry),
             fontSize = 14.sp,
