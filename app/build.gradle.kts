@@ -29,8 +29,8 @@ android {
         applicationId = "com.xptlabs.varliktakibi"
         minSdk = 24
         targetSdk = 36
-        // Yayındaki/yerel en yüksek sürüm 5 (1.1.0); üstüne çıkılıyor.
-        versionCode = 6
+        // Play'e gönderilen en yüksek sürüm 8 (reddedildi); üstüne çıkılıyor.
+        versionCode = 9
         versionName = "3.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -124,6 +124,9 @@ dependencies {
 
     // Abonelik
     implementation(libs.revenuecat.purchases)
+
+    // Play In-App Review
+    implementation(libs.play.review.ktx)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)

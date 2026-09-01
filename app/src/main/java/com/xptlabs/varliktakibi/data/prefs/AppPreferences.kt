@@ -44,6 +44,8 @@ class AppPreferences @Inject constructor(
         val PENDING_ONBOARDING_PAYWALL = booleanPreferencesKey("pending_onboarding_paywall")
 
         val AD_OPPORTUNITY_COUNT = stringPreferencesKey("ad_opportunity_count")
+        val ASSET_ADD_COUNT = stringPreferencesKey("asset_add_count")
+        val REVIEW_ASKED = booleanPreferencesKey("review_asked")
         val LAST_SNAPSHOT_DAY = stringPreferencesKey("last_snapshot_day")
     }
 
@@ -93,6 +95,19 @@ class AppPreferences @Inject constructor(
         }
         return result
     }
+
+    /** Kaçıncı varlık eklendi — puan istemi bu sayaca bakıyor. */
+    suspend fun nextAssetAddCount(): Int {
+        var result = 0
+        dataStore.edit { prefs ->
+            result = (prefs[Keys.ASSET_ADD_COUNT]?.toIntOrNull() ?: 0) + 1
+            prefs[Keys.ASSET_ADD_COUNT] = result.toString()
+        }
+        return result
+    }
+
+    val reviewAsked: Flow<Boolean> = dataStore.data.map { it[Keys.REVIEW_ASKED] ?: false }
+    suspend fun setReviewAsked() = edit { it[Keys.REVIEW_ASKED] = true }
 
     /** Günlük anlık görüntü işinin en son hangi günü yazdığı. */
     val lastSnapshotDay: Flow<Long> =

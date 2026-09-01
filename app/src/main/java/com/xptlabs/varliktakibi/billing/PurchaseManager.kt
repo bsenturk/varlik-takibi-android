@@ -16,6 +16,7 @@ import com.revenuecat.purchases.awaitPurchase
 import com.revenuecat.purchases.awaitRestore
 import com.revenuecat.purchases.interfaces.UpdatedCustomerInfoListener
 import com.xptlabs.varliktakibi.BuildConfig
+import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.data.prefs.AppPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -39,7 +40,8 @@ import javax.inject.Singleton
 @Singleton
 class PurchaseManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val prefs: AppPreferences
+    private val prefs: AppPreferences,
+    private val analytics: FirebaseAnalyticsManager
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -135,6 +137,8 @@ class PurchaseManager @Inject constructor(
         val pro = isSubscribed(info)
         if (_isPro.value != pro) Log.d(TAG, "Pro entitlement → $pro")
         _isPro.value = pro
+        // Firebase'deki her raporun ücretsiz/Pro kırılımı buna bağlı.
+        analytics.setProUser(pro)
         scope.launch { prefs.setPro(pro) }
     }
 

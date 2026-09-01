@@ -2,6 +2,7 @@ package com.xptlabs.varliktakibi.ui.rates
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.core.model.AssetCategory
 import com.xptlabs.varliktakibi.market.Instrument
 import com.xptlabs.varliktakibi.market.MarketDataStore
@@ -32,7 +33,8 @@ data class RatesUiState(
 
 @HiltViewModel
 class RatesViewModel @Inject constructor(
-    private val market: MarketDataStore
+    private val market: MarketDataStore,
+    private val analytics: FirebaseAnalyticsManager
 ) : ViewModel() {
 
     private val tab = MutableStateFlow(RatesTab.GOLD)
@@ -85,7 +87,11 @@ class RatesViewModel @Inject constructor(
         }
     }
 
-    fun setTab(value: RatesTab) { tab.value = value }
+    fun setTab(value: RatesTab) {
+        if (tab.value == value) return
+        tab.value = value
+        analytics.logRatesTabSelected(value.name)
+    }
     fun setQuery(value: String) { query.value = value }
     fun refresh() = viewModelScope.launch { market.refresh() }
 }

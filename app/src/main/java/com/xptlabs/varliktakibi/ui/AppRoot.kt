@@ -85,6 +85,10 @@ private fun MainContent(
         if (viewModel.consumePendingFirstAssetAdd()) showAddAsset = true
     }
 
+    LaunchedEffect(selectedTab) { viewModel.logScreen(selectedTab.name) }
+
+    LaunchedEffect(showAddAsset) { if (showAddAsset) viewModel.logScreen("ADD_ASSET") }
+
     MainScaffold(
         selectedTab = selectedTab,
         onTabSelected = { selectedTab = it },
@@ -135,11 +139,14 @@ private fun MainContent(
         val didAdd = addAssetClosed ?: return@LaunchedEffect
         addAssetClosed = null
 
-        when (viewModel.onAddAssetClosed(didAddAsset = didAdd, isPro = isPro)) {
+        val opportunity = viewModel.onAddAssetClosed(didAddAsset = didAdd, isPro = isPro)
+        when (opportunity) {
             AdOpportunity.PAYWALL -> paywallContext = PaywallContext.ONBOARDING
             AdOpportunity.INTERSTITIAL -> activity?.let { adMobManager.showInterstitial(it) }
             AdOpportunity.NOTHING -> Unit
         }
+
+        if (didAdd) activity?.let { viewModel.onAssetAdded(it, opportunity) }
     }
 
     editingAssetId?.let { assetId ->

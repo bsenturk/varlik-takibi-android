@@ -7,6 +7,22 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
+    <!--
+      Yalnızca telefon. Arayüz tek sütun üzerine kurulu; tablette kartlar
+      esneyip okunaksız hale geliyor. Play bu bildirimi büyük ekranlı
+      cihazlarda filtrelemek için kullanıyor, ama tek başına yeterli değil:
+      asıl filtre Play Console → Release → Setup → Advanced settings →
+      Device exclusion rules altında tablet form faktörünün hariç
+      tutulmasıyla kuruluyor.
+    -->
+    <supports-screens
+        android:smallScreens="true"
+        android:normalScreens="true"
+        android:largeScreens="false"
+        android:xlargeScreens="false"
+        android:requiresSmallestWidthDp="320"
+        android:compatibleWidthLimitDp="600" />
+
     <application
         android:name=".VarlikTakibiApplication"
         android:allowBackup="true"

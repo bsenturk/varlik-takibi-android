@@ -12,6 +12,7 @@ import com.xptlabs.varliktakibi.data.local.entity.AssetEntity
 import com.xptlabs.varliktakibi.data.local.entity.PortfolioEntity
 import com.xptlabs.varliktakibi.data.local.entity.category
 import com.xptlabs.varliktakibi.data.local.entity.totalValue
+import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.data.prefs.AppPreferences
 import com.xptlabs.varliktakibi.data.repo.PortfolioRepository
 import com.xptlabs.varliktakibi.market.MarketDataStore
@@ -72,6 +73,7 @@ data class AnalysisUiState(
 
 @HiltViewModel
 class AnalysisViewModel @Inject constructor(
+    private val analytics: FirebaseAnalyticsManager,
     private val repository: PortfolioRepository,
     private val snapshotDao: SnapshotDao,
     private val historyDao: HistoryDao,
@@ -138,7 +140,11 @@ class AnalysisViewModel @Inject constructor(
         }
     }
 
-    fun setRange(value: TimeRange) { range.value = value }
+    fun setRange(value: TimeRange) {
+        if (range.value == value) return
+        range.value = value
+        analytics.logAnalysisRangeSelected(value.name)
+    }
 
     fun selectPortfolio(portfolio: PortfolioEntity) = viewModelScope.launch {
         prefs.setSelectedPortfolioId(portfolio.id)

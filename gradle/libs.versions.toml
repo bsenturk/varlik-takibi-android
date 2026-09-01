@@ -27,7 +27,7 @@ supabase = "3.1.4"
 ktor = "3.1.2"
 
 # Abonelik
-revenuecat = "8.20.0"
+revenuecat = "10.19.1"
 
 # Firebase
 firebase-bom = "33.16.0"
@@ -36,6 +36,9 @@ firebase-crashlytics-gradle = "3.0.2"
 
 # AdMob
 play-services-ads = "24.0.0"
+
+# Play In-App Review
+play-review = "2.0.2"
 
 # Core Splashscreen
 core-splashscreen = "1.0.1"
@@ -117,6 +120,7 @@ firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging
 
 # AdMob
 play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "play-services-ads" }
+play-review-ktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "play-review" }
 
 [bundles]
 compose = [

@@ -269,6 +269,7 @@ class DashboardViewModel @Inject constructor(
     fun createPortfolio(name: String, color: PortfolioColor) = viewModelScope.launch {
         val created = repository.createPortfolio(name, color)
         prefs.setSelectedPortfolioId(created.id)
+        analytics.logPortfolioCreated(uiState.value.portfolios.count { !it.isGeneral } + 1)
     }
 
     fun updatePortfolio(portfolio: PortfolioEntity, name: String, color: PortfolioColor) =
@@ -276,6 +277,7 @@ class DashboardViewModel @Inject constructor(
 
     fun deletePortfolio(portfolio: PortfolioEntity) = viewModelScope.launch {
         repository.deletePortfolio(portfolio)
+        analytics.logPortfolioDeleted()
         repository.portfolios().firstOrNull { it.isGeneral }
             ?.let { prefs.setSelectedPortfolioId(it.id) }
     }
@@ -290,7 +292,9 @@ class DashboardViewModel @Inject constructor(
     fun canCreatePortfolio(): Boolean {
         val state = uiState.value
         if (state.isPro) return true
-        return state.portfolios.count { !it.isGeneral } < PortfolioRepository.FREE_PORTFOLIO_LIMIT
+        val allowed = state.portfolios.count { !it.isGeneral } < PortfolioRepository.FREE_PORTFOLIO_LIMIT
+        if (!allowed) analytics.logPortfolioLimitReached()
+        return allowed
     }
 
     /** TL tutarını seçili para birimine çevirir; kur yoksa TL'de bırakır. */

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Payments
@@ -62,8 +63,9 @@ import com.xptlabs.varliktakibi.core.model.Currency
 import com.xptlabs.varliktakibi.data.prefs.DarkModePreference
 import com.xptlabs.varliktakibi.ui.theme.AppColors
 
-private const val PRIVACY_URL = "https://xptlabs.com/varlik-takibi/gizlilik"
-private const val SUPPORT_EMAIL = "destek@xptlabs.com"
+private const val PRIVACY_URL = "https://bsenturk.github.io/varliktakibi-legal/privacy.html"
+private const val TERMS_URL = "https://bsenturk.github.io/varliktakibi-legal/terms.html"
+private const val SUPPORT_EMAIL = "buraksenturktr@icloud.com"
 
 @Composable
 fun SettingsScreen(
@@ -182,6 +184,15 @@ fun SettingsScreen(
                     title = "Gizlilik Politikası",
                     onClick = {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL)))
+                    }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                SettingsRow(
+                    icon = Icons.Filled.Description,
+                    tintHex = "#8E8E93",
+                    title = "Kullanım Koşulları",
+                    onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TERMS_URL)))
                     }
                 )
             }

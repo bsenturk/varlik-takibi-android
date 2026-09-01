@@ -28,8 +28,15 @@ class FirebaseAnalyticsManager @Inject constructor(
 
     fun setUserProperty(name: String, value: String) = analytics.setUserProperty(name, value)
 
+    /**
+     * Her raporun ücretsiz/Pro kırılımı bu özelliğe dayanıyor; abonelik durumu
+     * her değiştiğinde yazılır.
+     */
+    fun setProUser(isPro: Boolean) = setUserProperty("is_pro", isPro.toString())
+
     // ── Ekran / genel ────────────────────────────────────────────────────────
 
+    /** Hangi ekranın kullanıldığı — Firebase'in etkileşim raporlarının tabanı. */
     fun logScreenView(screenName: String) = log(FirebaseAnalytics.Event.SCREEN_VIEW) {
         putString(FirebaseAnalytics.Param.SCREEN_NAME, screenName)
     }
@@ -63,6 +70,29 @@ class FirebaseAnalyticsManager @Inject constructor(
         putString("category", category)
     }
 
+    // ── Portföy ──────────────────────────────────────────────────────────────
+    // "Sınırsız portföy" Pro'nun ana vaadi; gerçekten talep var mı bu üç olayla
+    // görülüyor. Portföy adı gönderilmiyor, kullanıcının kendi yazdığı metin.
+
+    fun logPortfolioCreated(totalCount: Int) = log("portfolio_created") {
+        putLong("total_count", totalCount.toLong())
+    }
+
+    fun logPortfolioDeleted() = log("portfolio_deleted") {}
+
+    /** Ücretsiz kullanıcı portföy limitine çarptı. */
+    fun logPortfolioLimitReached() = log("portfolio_limit_reached") {}
+
+    // ── Piyasalar / analiz ───────────────────────────────────────────────────
+
+    /** Piyasalar ekranında hangi varlık sınıfına bakılıyor. */
+    fun logRatesTabSelected(tab: String) = log("rates_tab_selected") { putString("tab", tab) }
+
+    /** Analiz grafiğinde seçilen zaman aralığı — uzun geçmiş gerçekten gerekli mi. */
+    fun logAnalysisRangeSelected(range: String) = log("analysis_range_selected") {
+        putString("range", range)
+    }
+
     // ── Paywall / abonelik ───────────────────────────────────────────────────
 
     fun logPaywallShown(context: String) = log("paywall_shown") { putString("context", context) }
@@ -90,6 +120,17 @@ class FirebaseAnalyticsManager @Inject constructor(
     }
 
     fun logSubscriptionRestored() = log("subscription_restored") {}
+
+    // ── Puan istemi ──────────────────────────────────────────────────────────
+
+    /**
+     * Play puan istemini açmayı denedik. Play kendi kotasına göre pencereyi hiç
+     * göstermeyebilir ve bunu bize bildirmiyor — yani bu olay "istem gösterildi"
+     * değil, "isteyebildiğimiz an geldi" demek.
+     */
+    fun logReviewPromptRequested(assetCount: Int) = log("review_prompt_requested") {
+        putLong("asset_count", assetCount.toLong())
+    }
 
     // ── Reklam ───────────────────────────────────────────────────────────────
 

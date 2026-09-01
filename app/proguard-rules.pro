@@ -38,3 +38,7 @@
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
+
+# Play In-App Review, derleme zamanı bir GMS anotasyonuna atıf yapıyor ama
+# anotasyon sınıfı hiçbir bağımlılıkta yok. Çalışma zamanında kullanılmıyor.
+-dontwarn com.google.android.gms.common.annotation.NoNullnessRewrite

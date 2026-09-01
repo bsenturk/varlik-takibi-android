@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "940154138400",
-    "project_id": "varliktakibiandroid",
-    "storage_bucket": "varliktakibiandroid.firebasestorage.app"
+    "project_number": "656103567767",
+    "project_id": "varlikdefterim",
+    "storage_bucket": "varlikdefterim.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:940154138400:android:50e2f4c9f2985b19d2b145",
+        "mobilesdk_app_id": "1:656103567767:android:6291e2bf8c4f7abe2554d2",
         "android_client_info": {
           "package_name": "com.xptlabs.varliktakibi"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCVtZP7y_DG7SK9oDZr-0SWFMWBTSajg9M"
+          "current_key": "AIzaSyDhESzaV3Gy7rJBceIX5u-3XD4b7SHOPQw"
         }
       ],
       "services": {
