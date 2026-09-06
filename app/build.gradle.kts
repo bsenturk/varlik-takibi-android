@@ -30,8 +30,8 @@ android {
         minSdk = 24
         targetSdk = 36
         // Play'e gönderilen en yüksek sürüm 8 (reddedildi); üstüne çıkılıyor.
-        versionCode = 9
-        versionName = "3.0.0"
+        versionCode = 10
+        versionName = "3.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -99,7 +99,6 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.core.splashscreen)
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))

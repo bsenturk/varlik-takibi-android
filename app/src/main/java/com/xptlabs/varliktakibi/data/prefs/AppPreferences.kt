@@ -47,6 +47,9 @@ class AppPreferences @Inject constructor(
         val ASSET_ADD_COUNT = stringPreferencesKey("asset_add_count")
         val REVIEW_ASKED = booleanPreferencesKey("review_asked")
         val LAST_SNAPSHOT_DAY = stringPreferencesKey("last_snapshot_day")
+
+        /** Yalnızca debug build: Pro durumunu elle zorlar. */
+        val DEBUG_PRO_OVERRIDE = booleanPreferencesKey("debug_pro_override")
     }
 
     val onboardingCompleted: Flow<Boolean> = dataStore.data.map { it[Keys.ONBOARDING_DONE] ?: false }
@@ -58,6 +61,16 @@ class AppPreferences @Inject constructor(
 
     val isPro: Flow<Boolean> = dataStore.data.map { it[Keys.IS_PRO] ?: false }
     suspend fun setPro(value: Boolean) = edit { it[Keys.IS_PRO] = value }
+
+    /**
+     * Debug build'de Pro durumunu elle zorlamak için; null = zorlama yok,
+     * gerçek abonelik geçerli. Kalıcı çünkü asıl işi soğuk açılışı test etmek —
+     * uygulama yeniden başladığında da sürmeli.
+     */
+    val debugProOverride: Flow<Boolean?> = dataStore.data.map { it[Keys.DEBUG_PRO_OVERRIDE] }
+    suspend fun setDebugProOverride(value: Boolean?) = edit {
+        if (value == null) it.remove(Keys.DEBUG_PRO_OVERRIDE) else it[Keys.DEBUG_PRO_OVERRIDE] = value
+    }
 
     val selectedCurrency: Flow<Currency> =
         dataStore.data.map { Currency.fromCode(it[Keys.SELECTED_CURRENCY]) }

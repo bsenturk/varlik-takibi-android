@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -31,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -68,23 +69,24 @@ fun BalanceCard(
             .background(
                 Brush.linearGradient(
                     colors = portfolioColor.gradient,
-                    start = androidx.compose.ui.geometry.Offset.Zero,
-                    end = androidx.compose.ui.geometry.Offset.Infinite
+                    start = Offset.Zero,
+                    end = Offset.Infinite
                 )
             )
+            // Sağ üstteki yumuşak ışık halkası — iOS'taki dekoratif daire.
+            // Layout child'ı olarak eklenirse 180dp'lik boyu kartın yüksekliğini
+            // dayatıyor (offset yerleşimi kaydırır, ölçüyü değiştirmez) ve kartın
+            // altında kocaman bir boşluk kalıyordu. Bu yüzden çiziliyor.
+            .drawBehind {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.12f),
+                    radius = 90.dp.toPx(),
+                    center = Offset(size.width - 30.dp.toPx(), 20.dp.toPx())
+                )
+            }
     ) {
-        // Sağ üstteki yumuşak ışık halkası — iOS'taki dekoratif daire.
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .offset(x = 60.dp, y = (-70).dp)
-                .size(180.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.12f))
-        )
-
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {

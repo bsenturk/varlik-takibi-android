@@ -38,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -74,6 +75,8 @@ import com.xptlabs.varliktakibi.ui.theme.AppColors
 fun AddAssetScreen(
     onClose: () -> Unit,
     onSaved: () -> Unit,
+    /** Huni analitiği için: akış onboarding'den mi + butonundan mı açıldı. */
+    source: String,
     onPremiumLocked: () -> Unit,
     viewModel: AddAssetViewModel = hiltViewModel()
 ) {
@@ -81,6 +84,12 @@ fun AddAssetScreen(
 
     LaunchedEffect(state.savedAsMerge) {
         if (state.savedAsMerge != null) onSaved()
+    }
+
+    // Hangi yoldan kapanırsa kapansın akış başa dönsün.
+    DisposableEffect(Unit) {
+        viewModel.onOpened(source)
+        onDispose { viewModel.resetFlow() }
     }
 
     Column(

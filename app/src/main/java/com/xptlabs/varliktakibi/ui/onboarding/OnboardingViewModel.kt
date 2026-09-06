@@ -17,12 +17,18 @@ class OnboardingViewModel @Inject constructor(
 ) : ViewModel() {
 
     fun onNotificationPermissionResult(granted: Boolean) {
+        analytics.logNotificationPermissionResult(granted)
         // İzin verildiyse token'ı hemen kaydet; verilmediyse backend'deki bayrağı
         // indir ki bu cihaza boşuna push denenmesin.
         if (granted) pushRegistrar.sync() else pushRegistrar.setEnabled(false)
     }
 
-    fun complete(reachedPage: Int, skipped: Boolean) {
+    /**
+     * [onDone] bilerek yazmalardan **sonra** çağrılıyor: ana ekran bayrakları
+     * okuyor, geçişi önce yaparsak henüz yazılmamış değeri görüp ilk varlık
+     * yönlendirmesini atlıyor ve bayrak bir sonraki açılışa sarkıyordu.
+     */
+    fun complete(reachedPage: Int, skipped: Boolean, onDone: () -> Unit) {
         analytics.logOnboardingCompleted(reachedPage, skipped)
         viewModelScope.launch {
             prefs.setOnboardingCompleted()
@@ -31,6 +37,7 @@ class OnboardingViewModel @Inject constructor(
             // bir kez görünsün.
             prefs.setPendingFirstAssetAdd(true)
             prefs.setPendingOnboardingPaywall(true)
+            onDone()
         }
     }
 }

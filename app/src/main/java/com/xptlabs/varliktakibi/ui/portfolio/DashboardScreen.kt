@@ -50,6 +50,8 @@ import com.xptlabs.varliktakibi.ui.common.PortfolioChip
 fun DashboardScreen(
     onEditAsset: (String) -> Unit,
     onPortfolioLimitReached: () -> Unit,
+    /** Aboneliği bitmiş kullanıcı kilitli bir varlığa/özete dokundu. */
+    onLockedContent: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -77,14 +79,22 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(state.portfolios, key = { it.id }) { portfolio ->
+                    val isLocked = portfolio.id in state.lockedPortfolioIds
                     PortfolioChip(
                         portfolio = portfolio,
                         isSelected = portfolio.id == state.selectedPortfolio?.id,
+                        isLocked = isLocked,
                         onClick = {
-                            if (portfolio.id == state.selectedPortfolio?.id && !portfolio.isGeneral) {
-                                editorMode = PortfolioEditorMode.Edit(portfolio)
-                            } else {
-                                viewModel.selectPortfolio(portfolio)
+                            when {
+                                // Kilitli portföy seçilemez; veri duruyor,
+                                // erişim Pro'ya bağlı.
+                                isLocked -> onPortfolioLimitReached()
+
+                                portfolio.id == state.selectedPortfolio?.id &&
+                                    !portfolio.isGeneral ->
+                                    editorMode = PortfolioEditorMode.Edit(portfolio)
+
+                                else -> viewModel.selectPortfolio(portfolio)
                             }
                         }
                     )
@@ -116,7 +126,10 @@ fun DashboardScreen(
                         )
                     }
 
-                    if (state.isEmpty) {
+                    if (!state.isLoaded) {
+                        // Veri gelmeden ne boş durum ne liste — ikisi de yanlış.
+                        Unit
+                    } else if (state.isEmpty) {
                         item { EmptyState(isGeneral = state.isGeneralSelected) }
                     } else {
                         item {
@@ -146,10 +159,11 @@ fun DashboardScreen(
                                 currency = state.currency,
                                 convert = { viewModel.convert(it, state.currency) },
                                 valuesMasked = state.valuesMasked,
-                                modifier = if (row.assetId != null) {
-                                    Modifier.clickable { onEditAsset(row.assetId) }
-                                } else {
-                                    Modifier
+                                modifier = when {
+                                    row.isLocked -> Modifier.clickable { onLockedContent() }
+                                    row.assetId != null ->
+                                        Modifier.clickable { onEditAsset(row.assetId) }
+                                    else -> Modifier
                                 }
                             )
                         }

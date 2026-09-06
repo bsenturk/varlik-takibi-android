@@ -9,6 +9,7 @@ import com.xptlabs.varliktakibi.data.local.entity.PortfolioEntity
 import com.xptlabs.varliktakibi.data.prefs.AppPreferences
 import com.xptlabs.varliktakibi.data.repo.AssetEditor
 import com.xptlabs.varliktakibi.data.repo.PortfolioRepository
+import com.xptlabs.varliktakibi.data.repo.ProLock
 import com.xptlabs.varliktakibi.market.Instrument
 import com.xptlabs.varliktakibi.market.MarketDataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -57,19 +59,47 @@ class AddAssetViewModel @Inject constructor(
 
     private var fundSearchJob: Job? = null
 
+    // ── Huni durumu ──────────────────────────────────────────────────────────
+    // Akışın nerede koptuğunu yazabilmek için ulaşılan **en derin** adım ve o
+    // adımdaki kategori tutuluyor; kullanıcı geri dönse de en derin nokta kalır.
+    private var source = SOURCE_MANUAL
+    private var deepestStep = STEP_CATEGORY
+    private var deepestCategory: AssetCategory? = null
+
     init {
+        // Liste akıştan izleniyor: ViewModel ekrandan uzun yaşıyor, tek seferlik
+        // okumada aradan yeni açılan portföy hiç görünmüyordu.
         viewModelScope.launch {
-            val portfolios = repository.portfolios().filter { !it.isGeneral }
-            // Varlık, o an seçili portföye eklenir; "Genel" seçiliyse ilk gerçek
-            // portföye — Genel bir toplayıcı, varlık tutmaz.
-            val preferredId = prefs.selectedPortfolioId.first()
-            val target = portfolios.firstOrNull { it.id == preferredId }
-                ?: portfolios.firstOrNull()
-            _uiState.update { it.copy(portfolios = portfolios, selectedPortfolio = target) }
+            combine(repository.observePortfolios(), purchaseManager.isPro) { all, isPro ->
+                // Kilitli portföyler listelenmiyor; aksi hâlde kullanıcı kilidin
+                // arkasına yeni varlık yazabilirdi.
+                val lockedIds = ProLock.lockedPortfolioIds(all, isPro)
+                all.filter { !it.isGeneral && it.id !in lockedIds }
+            }.collect { portfolios ->
+                // Varlık, o an seçili portföye eklenir; "Genel" seçiliyse ilk
+                // gerçek portföye — Genel bir toplayıcı, varlık tutmaz.
+                val preferredId = prefs.selectedPortfolioId.first()
+                _uiState.update { state ->
+                    val stillThere = state.selectedPortfolio
+                        ?.let { current -> portfolios.firstOrNull { it.id == current.id } }
+                    state.copy(
+                        portfolios = portfolios,
+                        selectedPortfolio = stillThere
+                            ?: portfolios.firstOrNull { it.id == preferredId }
+                            ?: portfolios.firstOrNull()
+                    )
+                }
+            }
         }
         viewModelScope.launch {
             purchaseManager.isPro.collect { pro -> _uiState.update { it.copy(isPro = pro) } }
         }
+    }
+
+    /** Ekran açıldığında bir kez; [source] "onboarding" ya da "manual". */
+    fun onOpened(source: String) {
+        this.source = source
+        analytics.logAddAssetOpened(source)
     }
 
     // ── Gezinme ──────────────────────────────────────────────────────────────
@@ -80,6 +110,9 @@ class AddAssetViewModel @Inject constructor(
             analytics.logPremiumCategoryLocked(category.name)
             return false
         }
+        deepestStep = STEP_TYPE_LIST
+        deepestCategory = category
+        analytics.logAddAssetCategorySelected(category.name, source)
         _uiState.update {
             it.copy(
                 step = AddAssetStep.InstrumentList(category),
@@ -91,6 +124,12 @@ class AddAssetViewModel @Inject constructor(
     }
 
     fun openInstrument(instrument: Instrument) {
+        deepestStep = STEP_AMOUNT
+        analytics.logAddAssetInstrumentSelected(
+            category = instrument.category.name,
+            symbol = instrument.symbol,
+            source = source
+        )
         _uiState.update { it.copy(step = AddAssetStep.Amount(instrument)) }
     }
 
@@ -167,7 +206,8 @@ class AddAssetViewModel @Inject constructor(
                     category = instrument.category.name,
                     symbol = instrument.symbol,
                     isMerge = merged,
-                    hasPurchasePrice = cost != null
+                    hasPurchasePrice = cost != null,
+                    source = source
                 )
                 _uiState.update { it.copy(savedAsMerge = merged) }
             }.onFailure { error ->
@@ -180,12 +220,48 @@ class AddAssetViewModel @Inject constructor(
 
     fun clearError() = _uiState.update { it.copy(errorMessage = null) }
 
+    /**
+     * Ekran kapanırken akışı başa alır. ViewModel Activity'ye bağlı olduğu için
+     * sıfırlanmazsa bir sonraki açılışta `savedAsMerge` hâlâ doluydu ve ekran
+     * açılır açılmaz kendini kapatıyordu.
+     */
+    fun resetFlow() {
+        fundSearchJob?.cancel()
+        // Kaydetmeden kapandıysa huninin nerede koptuğunu yaz.
+        if (_uiState.value.savedAsMerge == null) {
+            analytics.logAddAssetAbandoned(deepestStep, deepestCategory?.name, source)
+        }
+        deepestStep = STEP_CATEGORY
+        deepestCategory = null
+        viewModelScope.launch {
+            val preferredId = prefs.selectedPortfolioId.first()
+            _uiState.update { state ->
+                state.copy(
+                    step = AddAssetStep.Category,
+                    instruments = emptyList(),
+                    query = "",
+                    isSearchingFunds = false,
+                    errorMessage = null,
+                    savedAsMerge = null,
+                    selectedPortfolio = state.portfolios.firstOrNull { it.id == preferredId }
+                        ?: state.portfolios.firstOrNull()
+                )
+            }
+        }
+    }
+
     /** Kullanıcı bir şey girmeden önce göstereceğimiz güncel piyasa fiyatı. */
     fun marketPrice(instrument: Instrument): Double =
         market.tryPrice(instrument.symbol) ?: instrument.priceTry
 
-    private companion object {
-        const val FUND_SEARCH_DEBOUNCE_MS = 350L
+    companion object {
+        const val SOURCE_ONBOARDING = "onboarding"
+        const val SOURCE_MANUAL = "manual"
+
+        private const val FUND_SEARCH_DEBOUNCE_MS = 350L
+        private const val STEP_CATEGORY = "category"
+        private const val STEP_TYPE_LIST = "type_list"
+        private const val STEP_AMOUNT = "amount"
     }
 }
 

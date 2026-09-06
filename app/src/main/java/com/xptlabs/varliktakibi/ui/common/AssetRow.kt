@@ -11,6 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,7 +46,9 @@ data class AssetRowItem(
     val tintHex: String,
     val flag: String? = null,
     /** Yalnızca tek varlık satırlarında dolu — düzenleme/silme için. */
-    val assetId: String? = null
+    val assetId: String? = null,
+    /** Pro bitince erişimi kapanan satır: tutarı yazılmaz, dokununca paywall. */
+    val isLocked: Boolean = false
 )
 
 @Composable
@@ -94,13 +99,41 @@ fun AssetRow(
             )
         }
 
-        Sparkline(
-            values = item.sparkline,
-            lineColor = changeColor,
-            modifier = Modifier
-                .width(56.dp)
-                .height(32.dp)
-        )
+        if (!item.isLocked) {
+            Sparkline(
+                values = item.sparkline,
+                lineColor = changeColor,
+                modifier = Modifier
+                    .width(56.dp)
+                    .height(32.dp)
+            )
+        }
+
+        if (item.isLocked) {
+            // Tutar hiç yazılmaz: kilit "gösterme" değil "erişim" kısıtı.
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(AppColors.pro.copy(alpha = 0.14f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = null,
+                    tint = AppColors.pro,
+                    modifier = Modifier.size(12.dp)
+                )
+                Text(
+                    text = "Pro",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AppColors.pro
+                )
+            }
+            return@Row
+        }
 
         Column(
             horizontalAlignment = Alignment.End,
