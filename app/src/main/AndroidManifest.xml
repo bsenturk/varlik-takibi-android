@@ -2,14 +2,26 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Internet permission for ads -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!-- Notification permissions -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
+    <!--
+      Yalnızca telefon. Arayüz tek sütun üzerine kurulu; tablette kartlar
+      esneyip okunaksız hale geliyor. Play bu bildirimi büyük ekranlı
+      cihazlarda filtrelemek için kullanıyor, ama tek başına yeterli değil:
+      asıl filtre Play Console → Release → Setup → Advanced settings →
+      Device exclusion rules altında tablet form faktörünün hariç
+      tutulmasıyla kuruluyor.
+    -->
+    <supports-screens
+        android:smallScreens="true"
+        android:normalScreens="true"
+        android:largeScreens="false"
+        android:xlargeScreens="false"
+        android:requiresSmallestWidthDp="320"
+        android:compatibleWidthLimitDp="600" />
 
     <application
         android:name=".VarlikTakibiApplication"
@@ -26,6 +38,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.VarlikTakibi">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -33,38 +46,44 @@
             </intent-filter>
         </activity>
 
+        <!-- Sunucu tetikli bildirimler (Supabase send-push-notification -> FCM v1) -->
+        <service
+            android:name=".push.AppFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/notification_channel_id" />
+
         <!-- AdMob App ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-2545255000258244~7671712040"/>
+            android:value="ca-app-pub-2545255000258244~7671712040" />
 
-        <!-- AdMob Test Device IDs for debugging -->
         <meta-data
             android:name="com.google.android.gms.ads.flag.OPTIMIZE_INITIALIZATION"
-            android:value="true"/>
+            android:value="true" />
 
         <meta-data
             android:name="com.google.android.gms.ads.flag.OPTIMIZE_AD_LOADING"
-            android:value="true"/>
+            android:value="true" />
 
-        <!-- Notification Worker -->
-        <service
-            android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="shortService"
-            tools:node="merge" />
-
-        <!-- Boot receiver for scheduling notifications -->
-        <receiver
-            android:name=".notifications.BootReceiver"
-            android:enabled="true"
-            android:exported="false">
-            <intent-filter android:priority="1000">
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.PACKAGE_REPLACED" />
-                <data android:scheme="package" />
-            </intent-filter>
-        </receiver>
+        <!-- Günlük anlık görüntü işini uygulama kendi başlatıyor; WorkManager'ın
+             kendi başlatıcısı Hilt fabrikasını göremediği için kapatılıyor. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
     </application>
 

@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.VarlikTakibi" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Compose tüm çizimi devraldığı için tema yalnızca soğuk açılış penceresini
+         belirliyor. windowBackground'ı Compose'un zemin rengiyle eşlemek açılışta
+         beyaz parlamayı önlüyor (koyu tema karşılığı values-night'ta). -->
+    <style name="Theme.VarlikTakibi" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
 </resources>
