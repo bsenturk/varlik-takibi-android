@@ -61,7 +61,13 @@ data class AssetEntity(
     /** Son bilinen piyasa fiyatı (TL). Fiyat hiç alınamadıysa null. */
     val currentPrice: Double?,
     val dateAdded: Long = System.currentTimeMillis(),
-    val lastUpdated: Long = System.currentTimeMillis()
+    val lastUpdated: Long = System.currentTimeMillis(),
+    /**
+     * Nerede tutulduğu ("Ev", "Banka"…); boş = belirtilmemiş. Birleştirme
+     * anahtarının parçası: aynı enstrüman aynı portföyde farklı yerlerde ayrı
+     * varlık olarak tutulabiliyor.
+     */
+    @ColumnInfo(defaultValue = "''") val location: String = ""
 )
 
 /**

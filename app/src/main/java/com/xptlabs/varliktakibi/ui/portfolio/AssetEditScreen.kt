@@ -51,6 +51,7 @@ import com.xptlabs.varliktakibi.data.local.entity.category
 import com.xptlabs.varliktakibi.ui.addasset.toDoubleOrNullTr
 import com.xptlabs.varliktakibi.ui.common.AssetIconTile
 import com.xptlabs.varliktakibi.ui.common.DeleteConfirmDialog
+import com.xptlabs.varliktakibi.ui.common.LocationPicker
 import com.xptlabs.varliktakibi.ui.common.ScreenNavBar
 import com.xptlabs.varliktakibi.ui.theme.AppColors
 import kotlin.math.abs
@@ -77,6 +78,7 @@ fun AssetEditScreen(
 
     var amount by remember(asset.id) { mutableStateOf(TrFormat.amount(asset.amount)) }
     var cost by remember(asset.id) { mutableStateOf(TrFormat.decimal(asset.costBasis)) }
+    var location by remember(asset.id) { mutableStateOf(asset.location) }
     var confirmingDelete by remember { mutableStateOf(false) }
     var showingHistory by remember { mutableStateOf(false) }
 
@@ -145,6 +147,12 @@ fun AssetEditScreen(
                 )
             }
 
+            LocationPicker(
+                location = location,
+                onLocationChange = { location = it },
+                suggestions = asset.category.locationSuggestions
+            )
+
             ValuePreview(
                 amount = amount.toDoubleOrNullTr() ?: 0.0,
                 cost = cost.toDoubleOrNullTr() ?: asset.costBasis,
@@ -197,7 +205,7 @@ fun AssetEditScreen(
 
         // Küçük ekranda / klavye açıkken Kaydet kaydırmanın dibinde kaybolmasın.
         Button(
-            onClick = { viewModel.save(amount, cost) },
+            onClick = { viewModel.save(amount, cost, location) },
             enabled = (amount.toDoubleOrNullTr() ?: 0.0) > 0,
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier

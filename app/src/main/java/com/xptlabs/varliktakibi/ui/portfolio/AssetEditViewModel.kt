@@ -66,7 +66,7 @@ class AssetEditViewModel @Inject constructor(
         }
     }
 
-    fun save(amountText: String, costText: String) {
+    fun save(amountText: String, costText: String, location: String) {
         val asset = _uiState.value.asset ?: return
         val amount = amountText.toDoubleOrNullTr()
         if (amount == null || amount <= 0) {
@@ -77,7 +77,8 @@ class AssetEditViewModel @Inject constructor(
             runCatching {
                 costText.toDoubleOrNullTr()?.takeIf { it > 0 }
                     ?.let { editor.setCostBasis(asset, it) }
-                // Maliyet güncellendiyse en taze satırla devam et.
+                editor.setLocation(assetDao.getById(asset.id) ?: asset, location)
+                // Maliyet/yer güncellendiyse en taze satırla devam et.
                 val fresh = assetDao.getById(asset.id) ?: asset
                 editor.setAmount(fresh, amount)
             }.onSuccess {

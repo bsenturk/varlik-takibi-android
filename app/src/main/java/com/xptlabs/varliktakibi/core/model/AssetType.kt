@@ -39,6 +39,15 @@ enum class AssetCategory(
      */
     val isDynamic: Boolean get() = backendAssetType != null
 
+    /** "Nerede tutuluyor?" için öneri çipleri. */
+    val locationSuggestions: List<String>
+        get() = when (this) {
+            GOLD, SILVER -> listOf("Ev", "Banka", "Kiralık Kasa")
+            CURRENCY -> listOf("Banka", "Nakit / Ev", "Kiralık Kasa")
+            CRYPTO -> listOf("Kripto Borsası", "Soğuk Cüzdan", "Sıcak Cüzdan")
+            BIST, US_STOCK, FUND -> listOf("Banka", "Aracı Kurum")
+        }
+
     /** Varlık Pro gerektiren kategoriler. */
     val isPremium: Boolean get() = this == FUND
 

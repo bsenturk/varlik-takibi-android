@@ -3,7 +3,7 @@ package com.xptlabs.varliktakibi
 import com.xptlabs.varliktakibi.core.ext.Days
 import com.xptlabs.varliktakibi.core.ext.parseTimestampOrNull
 import com.xptlabs.varliktakibi.ui.addasset.toDoubleOrNullTr
-import com.xptlabs.varliktakibi.ui.common.KeypadInput
+import com.xptlabs.varliktakibi.ui.common.DecimalInput
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -86,30 +86,31 @@ class DaysAndInputTest {
         assertNull("abc".toDoubleOrNullTr())
     }
 
-    // ── Tuş takımı ───────────────────────────────────────────────────────────
+    // ── Sayı girişi temizleme ────────────────────────────────────────────────
 
     @Test
     fun `ondalik hane siniri asilmaz`() {
-        assertEquals("1,23", KeypadInput.appendDigit("1,23", "4", maxDecimals = 2))
-        assertEquals("1,234", KeypadInput.appendDigit("1,23", "4", maxDecimals = 3))
+        assertEquals("1,23", DecimalInput.sanitize("1,234", maxDecimals = 2))
+        assertEquals("1,234", DecimalInput.sanitize("1,234", maxDecimals = 3))
     }
 
     @Test
     fun `bastaki sifir yutulur ama ondalikta korunur`() {
-        assertEquals("5", KeypadInput.appendDigit("0", "5", maxDecimals = 2))
-        assertEquals("0,5", KeypadInput.appendDigit("0,", "5", maxDecimals = 2))
+        assertEquals("5", DecimalInput.sanitize("05", maxDecimals = 2))
+        assertEquals("0,5", DecimalInput.sanitize("0,5", maxDecimals = 2))
     }
 
     @Test
-    fun `ikinci virgul eklenmez`() {
-        assertEquals("1,5", KeypadInput.appendComma("1,5"))
-        assertEquals("0,", KeypadInput.appendComma(""))
-        assertEquals("12,", KeypadInput.appendComma("12"))
+    fun `nokta virgule doner, ikinci ayrac atilir`() {
+        assertEquals("1,5", DecimalInput.sanitize("1.5", maxDecimals = 2))
+        assertEquals("1,55", DecimalInput.sanitize("1,5,5", maxDecimals = 4))
+        assertEquals("0,", DecimalInput.sanitize(",", maxDecimals = 2))
     }
 
     @Test
-    fun `silme bos metinde patlamaz`() {
-        assertEquals("", KeypadInput.backspace(""))
-        assertEquals("1", KeypadInput.backspace("12"))
+    fun `harf ve bosluk atilir, tam sayi alaninda ayrac yok`() {
+        assertEquals("12", DecimalInput.sanitize(" 1a2 ", maxDecimals = 2))
+        assertEquals("15", DecimalInput.sanitize("1,5", maxDecimals = 0))
+        assertEquals("", DecimalInput.sanitize("", maxDecimals = 2))
     }
 }

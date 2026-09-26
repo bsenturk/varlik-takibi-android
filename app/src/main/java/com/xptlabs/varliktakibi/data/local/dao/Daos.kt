@@ -52,8 +52,12 @@ interface AssetDao {
     @Query("SELECT * FROM assets WHERE portfolioId = :portfolioId ORDER BY dateAdded")
     suspend fun getForPortfolio(portfolioId: String): List<AssetEntity>
 
-    @Query("SELECT * FROM assets WHERE portfolioId = :portfolioId AND symbol = :symbol LIMIT 1")
-    suspend fun findInPortfolio(portfolioId: String, symbol: String): AssetEntity?
+    /** Birleştirme adayı: aynı portföyde, aynı enstrüman, aynı yerde. */
+    @Query(
+        "SELECT * FROM assets WHERE portfolioId = :portfolioId AND symbol = :symbol " +
+            "AND location = :location LIMIT 1"
+    )
+    suspend fun findInPortfolio(portfolioId: String, symbol: String, location: String): AssetEntity?
 
     @Query("SELECT * FROM assets WHERE id = :id")
     suspend fun getById(id: String): AssetEntity?

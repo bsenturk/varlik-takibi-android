@@ -53,10 +53,12 @@ abstract class AppDatabase : RoomDatabase() {
         const val NAME = "varlik_takibi.db"
         const val LEGACY_NAME = "asset_tracker_db"
 
-        /** 3.2.0: portföy hedefi, işlemlerin varlığa bağlanması. */
+        /** 3.2.0: portföy hedefi, işlemlerin varlığa bağlanması, varlığın yeri. */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE portfolios ADD COLUMN targetValue REAL NOT NULL DEFAULT 0")
+
+                db.execSQL("ALTER TABLE assets ADD COLUMN location TEXT NOT NULL DEFAULT ''")
 
                 db.execSQL("ALTER TABLE transaction_history ADD COLUMN assetId TEXT")
                 db.execSQL(

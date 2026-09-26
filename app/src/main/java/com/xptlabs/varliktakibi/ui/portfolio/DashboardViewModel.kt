@@ -189,7 +189,8 @@ class DashboardViewModel @Inject constructor(
                     tintHex = type.tintHex,
                     flag = type.flag,
                     assetId = asset.id,
-                    isLocked = ProLock.isLocked(asset, lockedIds, isPro)
+                    isLocked = ProLock.isLocked(asset, lockedIds, isPro),
+                    location = asset.location.ifEmpty { null }
                 )
             }
 

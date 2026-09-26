@@ -1,6 +1,30 @@
 package com.xptlabs.varliktakibi.ui.addasset
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.KeyboardHide
+import androidx.compose.material.icons.filled.UnfoldMore
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import kotlin.math.abs
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -61,8 +85,8 @@ import com.xptlabs.varliktakibi.data.local.entity.color
 import com.xptlabs.varliktakibi.market.Instrument
 import com.xptlabs.varliktakibi.ui.common.ScreenNavBar
 import com.xptlabs.varliktakibi.ui.common.AssetIconTile
-import com.xptlabs.varliktakibi.ui.common.Keypad
-import com.xptlabs.varliktakibi.ui.common.KeypadInput
+import com.xptlabs.varliktakibi.ui.common.DecimalInput
+import com.xptlabs.varliktakibi.ui.common.LocationPicker
 import com.xptlabs.varliktakibi.ui.theme.AppColors
 
 /**
@@ -103,7 +127,7 @@ fun AddAssetScreen(
             title = when (val step = state.step) {
                 is AddAssetStep.Category -> "Varlık Ekle"
                 is AddAssetStep.InstrumentList -> step.category.displayName
-                is AddAssetStep.Amount -> step.instrument.name
+                is AddAssetStep.Amount -> step.instrument.category.displayName
             },
             isFirstStep = state.step is AddAssetStep.Category,
             onBack = { if (!viewModel.goBack()) onClose() },
@@ -133,7 +157,9 @@ fun AddAssetScreen(
                 marketPrice = viewModel.marketPrice(step.instrument),
                 state = state,
                 onSelectPortfolio = viewModel::selectPortfolio,
-                onSave = { amount, price -> viewModel.save(step.instrument, amount, price) }
+                onSave = { amount, price, location ->
+                    viewModel.save(step.instrument, amount, price, location)
+                }
             )
         }
     }
@@ -318,147 +344,355 @@ private fun EmptyInstruments(category: AssetCategory, isSearching: Boolean, quer
 
 // ── Adım 3: miktar girişi ────────────────────────────────────────────────────
 
+/**
+ * Miktar, portföy, yer ve opsiyonel alış fiyatı. Sistem klavyesi: yalnızca alana
+ * dokununca açılıyor, kapalıyken tüm alanlar tek ekranda görünüyor.
+ */
 @Composable
 private fun AmountEntry(
     instrument: Instrument,
     marketPrice: Double,
     state: AddAssetUiState,
     onSelectPortfolio: (com.xptlabs.varliktakibi.data.local.entity.PortfolioEntity) -> Unit,
-    onSave: (String, String) -> Unit
+    onSave: (amount: String, purchasePrice: String, location: String) -> Unit
 ) {
     var amount by remember { mutableStateOf("") }
     var purchasePrice by remember { mutableStateOf("") }
-    var editingPrice by remember { mutableStateOf(false) }
+    var location by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+    var anyFocused by remember { mutableStateOf(false) }
 
-    // Kriptoda 8 hane gerekiyor (0,00021 BTC), tutarda 2 yeterli.
+    // Kriptoda 8 hane gerekiyor (0,00021 BTC), diğerlerinde 4 yeterli.
     val amountDecimals = if (instrument.category == AssetCategory.CRYPTO) 8 else 4
     val parsedAmount = amount.toDoubleOrNullTr() ?: 0.0
     val parsedCost = purchasePrice.toDoubleOrNullTr()
+    val isTRY = instrument.symbol == "TRY"
+    val canSave = parsedAmount > 0 && state.selectedPortfolio != null
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 18.dp)
-            .navigationBarsPadding(),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(modifier = Modifier.height(8.dp))
-
-        InputField(
-            label = "Miktar (${instrument.unit})",
-            value = amount,
-            isActive = !editingPrice,
-            onClick = { editingPrice = false }
-        )
-
-        InputField(
-            label = "Alış fiyatı (birim, ₺) — boş bırakılırsa güncel fiyat",
-            value = purchasePrice,
-            isActive = editingPrice,
-            placeholder = TrFormat.decimal(marketPrice),
-            onClick = { editingPrice = true }
-        )
-
-        // Canlı değer ve tahmini kâr/zarar önizlemesi.
-        if (parsedAmount > 0) {
-            val value = parsedAmount * marketPrice
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "Güncel değer: ${TrFormat.money(value)}",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+    Column(modifier = Modifier.fillMaxSize().imePadding()) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .onFocusChanged { anyFocused = it.hasFocus },
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)
+            ) {
+                AssetIconTile(
+                    icon = instrument.type.icon,
+                    tintHex = instrument.type.tintHex,
+                    flag = instrument.flag,
+                    size = 34.dp
                 )
-                if (parsedCost != null && parsedCost > 0) {
-                    val pl = (marketPrice - parsedCost) * parsedAmount
-                    val plPercent = (marketPrice - parsedCost) / parsedCost * 100.0
-                    Text(
-                        text = "Tahmini kâr/zarar: ${TrFormat.money(pl)} (${TrFormat.percent(plPercent)})",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = AppColors.forChange(pl)
-                    )
-                }
+                Text(
+                    instrument.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-        }
 
-        if (state.portfolios.size > 1) {
+            BigAmountField(
+                label = "Miktar",
+                value = amount,
+                onValueChange = { amount = DecimalInput.sanitize(it, amountDecimals) },
+                suffix = instrument.unit
+            )
+
             PortfolioPicker(
                 portfolios = state.portfolios,
                 selected = state.selectedPortfolio,
                 onSelect = onSelectPortfolio
             )
+
+            LocationPicker(
+                location = location,
+                onLocationChange = { location = it },
+                suggestions = instrument.category.locationSuggestions
+            )
+
+            // Türk Lirası'nın alış kuru yok (baz para birimi).
+            if (!isTRY) {
+                PurchasePriceField(
+                    label = if (instrument.category.isDynamic) "Ortalama Maliyet" else "Satın Alınan Kur",
+                    value = purchasePrice,
+                    onValueChange = { purchasePrice = DecimalInput.sanitize(it, 2) },
+                    placeholder = "Güncel fiyat",
+                    hint = "Belirtmezseniz güncel fiyattan alınmış kabul edilir."
+                )
+                LiveValuePreview(
+                    unitPrice = marketPrice,
+                    unit = instrument.unit,
+                    amount = parsedAmount,
+                    showsUnitPrice = !instrument.category.isDynamic
+                )
+                if (parsedAmount > 0 && parsedCost != null && parsedCost > 0 && marketPrice > 0) {
+                    ProfitLossPreview(
+                        value = (marketPrice - parsedCost) * parsedAmount,
+                        percent = (marketPrice - parsedCost) / parsedCost * 100.0
+                    )
+                }
+            }
+            Box(modifier = Modifier.height(8.dp))
         }
 
-        Keypad(
-            onDigit = { digit ->
-                if (editingPrice) {
-                    purchasePrice = KeypadInput.appendDigit(purchasePrice, digit, 2)
-                } else {
-                    amount = KeypadInput.appendDigit(amount, digit, amountDecimals)
-                }
-            },
-            onComma = {
-                if (editingPrice) purchasePrice = KeypadInput.appendComma(purchasePrice)
-                else amount = KeypadInput.appendComma(amount)
-            },
-            onBackspace = {
-                if (editingPrice) purchasePrice = KeypadInput.backspace(purchasePrice)
-                else amount = KeypadInput.backspace(amount)
-            }
-        )
-
-        Button(
-            onClick = { onSave(amount, purchasePrice) },
-            enabled = parsedAmount > 0,
-            shape = RoundedCornerShape(14.dp),
+        // Alt çubuk kaydırma alanının dışında: klavye açılınca odaklanan alan
+        // Kaydet'in altında kalmasın.
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
+                .background(MaterialTheme.colorScheme.background)
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("Portföye Ekle", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            if (anyFocused) {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .clickable { focusManager.clearFocus() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.KeyboardHide, contentDescription = "Klavyeyi kapat")
+                }
+            }
+            GradientButton(
+                text = "Kaydet",
+                enabled = canSave,
+                onClick = { onSave(amount, purchasePrice, location) },
+                modifier = Modifier.weight(1f)
+            )
         }
-
-        Box(modifier = Modifier.height(8.dp))
     }
 }
 
+/** Ortada büyük miktar alanı; altında odakta renklenen çizgi. */
 @Composable
-private fun InputField(
+private fun BigAmountField(
     label: String,
     value: String,
-    isActive: Boolean,
-    placeholder: String = "0",
-    onClick: () -> Unit
+    onValueChange: (String) -> Unit,
+    suffix: String,
+    preview: String? = null
 ) {
+    var focused by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { focusRequester.requestFocus() },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(label, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val style = TextStyle(
+                fontSize = 44.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.End
+            )
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                textStyle = style,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                modifier = Modifier
+                    .width(IntrinsicSize.Max)
+                    .widthIn(min = 30.dp, max = 260.dp)
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { focused = it.isFocused },
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.CenterEnd) {
+                        if (value.isEmpty()) {
+                            Text("0", style = style.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
+                        }
+                        inner()
+                    }
+                }
+            )
+            Text(
+                suffix,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .width(120.dp)
+                .height(2.dp)
+                .background(
+                    if (focused) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.25f)
+                )
+        )
+        // Büyük ham sayılar ("5000000") tek bakışta okunmuyor.
+        if (preview != null) {
+            Text(
+                preview,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** Opsiyonel maliyet: hisse/kripto/fonda "ortalama maliyet", altın/dövizde "kur". */
+@Composable
+private fun PurchasePriceField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    hint: String
+) {
+    var focused by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .border(
+                    2.dp,
+                    if (focused) MaterialTheme.colorScheme.primary else Color.Transparent,
+                    RoundedCornerShape(14.dp)
+                )
+                .clickable { focusRequester.requestFocus() }
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text("(Opsiyonel)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            val style = TextStyle(
+                fontSize = 16.sp,
+                fontWeight = if (value.isEmpty()) FontWeight.Normal else FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.End
+            )
+            if (value.isNotEmpty()) Text("₺", style = style)
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                textStyle = style,
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                modifier = Modifier
+                    .width(IntrinsicSize.Max)
+                    .widthIn(min = 20.dp, max = 180.dp)
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { focused = it.isFocused },
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.CenterEnd) {
+                        if (value.isEmpty()) {
+                            Text(placeholder, style = style.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
+                        }
+                        inner()
+                    }
+                }
+            )
+        }
+        Row(
+            modifier = Modifier.padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Icon(
+                Icons.Outlined.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(12.dp)
+            )
+            Text(hint, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Birim fiyat (grafik kartı yoksa) ve girilen miktarın toplam değeri. */
+@Composable
+private fun LiveValuePreview(unitPrice: Double, unit: String, amount: Double, showsUnitPrice: Boolean) {
+    if (unitPrice <= 0) return
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .border(
-                width = if (isActive) 2.dp else 1.dp,
-                color = if (isActive) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.outline,
-                shape = RoundedCornerShape(14.dp)
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+            .padding(horizontal = 16.dp)
     ) {
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+        if (showsUnitPrice) {
+            Row(modifier = Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Güncel Fiyat", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+                Text("${TrFormat.money(unitPrice)} / $unit", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            }
+            HorizontalDivider()
+        }
+        Row(modifier = Modifier.padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Toplam Değer", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            Text(TrFormat.money(amount * unitPrice), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+        }
+    }
+}
+
+@Composable
+private fun ProfitLossPreview(value: Double, percent: Double) {
+    val color = AppColors.forChange(value)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            if (value >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(14.dp)
         )
+        Text("Tahmini Kâr/Zarar:", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(
-            text = value.ifEmpty { placeholder },
-            fontSize = 24.sp,
+            "${if (value >= 0) "+" else "-"}${TrFormat.money(abs(value))} (%${TrFormat.decimal(abs(percent))})",
+            fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = if (value.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant
-            else MaterialTheme.colorScheme.onSurface
+            color = color
         )
+    }
+}
+
+@Composable
+private fun GradientButton(text: String, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .height(54.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    if (enabled) listOf(Color(0xFF0A84FF), Color(0xFFAF52DE))
+                    else listOf(Color.Gray, Color.Gray.copy(alpha = 0.8f))
+                )
+            )
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
     }
 }
 
@@ -475,23 +709,35 @@ private fun PortfolioPicker(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(AppColors.subtleFill)
+                .background(MaterialTheme.colorScheme.surface)
                 .clickable { expanded = true }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(selected?.color?.color ?: MaterialTheme.colorScheme.primary)
+            Text(
+                "Portföy",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
             )
+            if (selected != null) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(selected.color.color)
+                )
+            }
             Text(
                 text = selected?.name ?: "Portföy seç",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f)
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Icon(
+                Icons.Filled.UnfoldMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp)
             )
         }
 

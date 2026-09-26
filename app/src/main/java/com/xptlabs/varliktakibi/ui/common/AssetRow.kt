@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -48,7 +49,12 @@ data class AssetRowItem(
     /** Yalnızca tek varlık satırlarında dolu — düzenleme/silme için. */
     val assetId: String? = null,
     /** Pro bitince erişimi kapanan satır: tutarı yazılmaz, dokununca paywall. */
-    val isLocked: Boolean = false
+    val isLocked: Boolean = false,
+    /**
+     * Tutulduğu yer. Alt başlığa eklenmiyor — sol sütun dar, "10 gram · Ba…"
+     * diye kırpılıyordu — ayrı küçük bir satırda.
+     */
+    val location: String? = null
 )
 
 @Composable
@@ -97,6 +103,27 @@ fun AssetRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (item.location != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Place,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(11.dp)
+                    )
+                    Text(
+                        text = item.location,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
 
         if (!item.isLocked) {

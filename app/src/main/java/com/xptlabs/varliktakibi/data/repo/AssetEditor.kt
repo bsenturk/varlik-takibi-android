@@ -25,8 +25,9 @@ class AssetEditor @Inject constructor(
 ) {
 
     /**
-     * Enstrümanı portföye ekler. Aynı sembol o portföyde zaten varsa miktarlar
-     * toplanır ve maliyet ağırlıklı ortalamaya çekilir.
+     * Enstrümanı portföye ekler. Aynı sembol o portföyde **aynı yerde** zaten
+     * varsa miktarlar toplanır ve maliyet ağırlıklı ortalamaya çekilir —
+     * "evde 10 gram" ile "bankada 20 gram" ayrı varlıklar.
      *
      * @param costPerUnit kullanıcının girdiği alış fiyatı; boş bırakıldıysa
      *   güncel piyasa fiyatı kullanılır (kâr/zarar sıfırdan başlar).
@@ -36,13 +37,15 @@ class AssetEditor @Inject constructor(
         instrument: Instrument,
         portfolioId: String,
         amount: Double,
-        costPerUnit: Double?
+        costPerUnit: Double?,
+        location: String = ""
     ): Boolean {
         require(amount > 0) { "Miktar sıfırdan büyük olmalı" }
 
+        val place = normalizedLocation(location)
         val price = market.tryPrice(instrument.symbol) ?: instrument.priceTry
         val cost = costPerUnit?.takeIf { it > 0 } ?: price
-        val existing = assetDao.findInPortfolio(portfolioId, instrument.symbol)
+        val existing = assetDao.findInPortfolio(portfolioId, instrument.symbol, place)
 
         if (existing == null) {
             val asset = AssetEntity(
@@ -53,7 +56,8 @@ class AssetEditor @Inject constructor(
                 unit = instrument.unit,
                 amount = amount,
                 costBasis = cost,
-                currentPrice = price
+                currentPrice = price,
+                location = place
             )
             assetDao.insert(asset)
             history.recordInitial(asset, cost)
@@ -107,6 +111,13 @@ class AssetEditor @Inject constructor(
         history.recordDailySnapshot(updated)
     }
 
+    /** Yeri değiştirir. Aynı yerde aynı enstrüman varsa birleştirilmez (iOS ile aynı). */
+    suspend fun setLocation(asset: AssetEntity, location: String) {
+        val place = normalizedLocation(location)
+        if (place == asset.location) return
+        assetDao.update(asset.copy(location = place, lastUpdated = System.currentTimeMillis()))
+    }
+
     /** Birim başına maliyeti doğrudan düzenler (kullanıcı yanlış girdiyse). */
     suspend fun setCostBasis(asset: AssetEntity, costPerUnit: Double) {
         require(costPerUnit > 0) { "Alış fiyatı sıfırdan büyük olmalı" }
@@ -116,6 +127,11 @@ class AssetEditor @Inject constructor(
     }
 
     companion object {
+        const val MAX_LOCATION_LENGTH = 30
+
+        /** Karşılaştırma ve kayıt aynı temizlenmiş biçimi kullanıyor. */
+        fun normalizedLocation(raw: String): String = raw.trim().take(MAX_LOCATION_LENGTH)
+
         /**
          * Ağırlıklı ortalama birim maliyet. Toplam miktar sıfırsa (olmaması
          * gereken durum) mevcut maliyet korunur, sıfıra bölmek yerine.

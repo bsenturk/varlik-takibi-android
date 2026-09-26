@@ -185,7 +185,12 @@ class AddAssetViewModel @Inject constructor(
 
     // ── Kaydetme ─────────────────────────────────────────────────────────────
 
-    fun save(instrument: Instrument, amountText: String, purchasePriceText: String) {
+    fun save(
+        instrument: Instrument,
+        amountText: String,
+        purchasePriceText: String,
+        location: String
+    ) {
         val amount = amountText.toDoubleOrNullTr()
         if (amount == null || amount <= 0) {
             _uiState.update { it.copy(errorMessage = "Lütfen geçerli bir miktar girin.") }
@@ -200,7 +205,7 @@ class AddAssetViewModel @Inject constructor(
 
         viewModelScope.launch {
             runCatching {
-                editor.addOrMerge(instrument, portfolio.id, amount, cost)
+                editor.addOrMerge(instrument, portfolio.id, amount, cost, location)
             }.onSuccess { merged ->
                 analytics.logAssetAdded(
                     category = instrument.category.name,

@@ -188,7 +188,8 @@ private fun SummaryCard(
             Column {
                 Text(asset.name, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                 Text(
-                    "${TrFormat.amount(asset.amount)} ${asset.unit}",
+                    "${TrFormat.amount(asset.amount)} ${asset.unit}" +
+                        if (asset.location.isEmpty()) "" else " · ${asset.location}",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
