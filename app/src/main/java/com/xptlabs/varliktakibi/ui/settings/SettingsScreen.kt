@@ -1,5 +1,6 @@
 package com.xptlabs.varliktakibi.ui.settings
 
+import androidx.activity.compose.LocalActivity
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -30,6 +31,7 @@ import androidx.compose.material.icons.filled.Mail
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WorkspacePremium
@@ -76,7 +78,9 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val privacyOptionsRequired by viewModel.privacyOptionsRequired.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val activity = LocalActivity.current
 
     LaunchedEffect(Unit) { viewModel.refreshNotificationStatus() }
 
@@ -149,6 +153,16 @@ fun SettingsScreen(
                         )
                     }
                 )
+                // Yalnızca AEA/İngiltere'de: reklam onayını sonradan değiştirme.
+                if (privacyOptionsRequired && !state.isPro) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                    SettingsRow(
+                        icon = Icons.Filled.PrivacyTip,
+                        tintHex = "#8E8E93",
+                        title = "Reklam Gizlilik Tercihleri",
+                        onClick = { activity?.let(viewModel::showPrivacyOptions) }
+                    )
+                }
             }
         }
 
@@ -165,6 +179,13 @@ fun SettingsScreen(
                             false -> "Ücretsiz"
                         },
                         onClick = viewModel::cycleDebugProOverride
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                    SettingsRow(
+                        icon = Icons.Filled.PrivacyTip,
+                        tintHex = "#8E8E93",
+                        title = "GDPR Formu (AB testi)",
+                        onClick = { activity?.let(viewModel::debugShowEeaConsentForm) }
                     )
                 }
             }

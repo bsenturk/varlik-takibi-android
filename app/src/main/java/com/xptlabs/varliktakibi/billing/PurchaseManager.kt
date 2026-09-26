@@ -114,6 +114,14 @@ class PurchaseManager @Inject constructor(
         }
     }
 
+    /**
+     * Diskteki son bilinen Pro durumu (debug zorlaması dahil). Açılışta
+     * RevenueCat'i beklemeden karar vermesi gerekenler için: reklam SDK'sı ve
+     * onay formu Pro kullanıcıda hiç başlatılmıyor.
+     */
+    suspend fun cachedIsPro(): Boolean =
+        (if (BuildConfig.DEBUG) prefs.debugProOverride.first() else null) ?: prefs.isPro.first()
+
     suspend fun loadOfferings() {
         if (!configured) return
         runCatching { Purchases.sharedInstance.awaitOfferings() }

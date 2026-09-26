@@ -57,6 +57,11 @@ class MainActivity : ComponentActivity() {
             market.stopAutoRefresh()
         }
 
+        // Önce reklam onayı (AEA/İngiltere), sonra reklam SDK'sı. Pro'da ikisi de yok.
+        if (savedInstanceState == null) {
+            lifecycleScope.launch { adMobManager.start(this@MainActivity) }
+        }
+
         // Pro durumu değişince reklam yüzeylerini anında güncelle.
         lifecycleScope.launch {
             purchaseManager.isPro.collect { adMobManager.onProStatusChanged(it) }

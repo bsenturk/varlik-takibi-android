@@ -1,5 +1,8 @@
 package com.xptlabs.varliktakibi.ui.settings
 
+import android.app.Activity
+import com.xptlabs.varliktakibi.ads.AdMobManager
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.BuildConfig
@@ -33,8 +36,16 @@ class SettingsViewModel @Inject constructor(
     private val prefs: AppPreferences,
     private val purchaseManager: PurchaseManager,
     private val pushRegistrar: PushRegistrar,
-    private val analytics: FirebaseAnalyticsManager
+    private val analytics: FirebaseAnalyticsManager,
+    private val adMobManager: AdMobManager
 ) : ViewModel() {
+
+    /** AEA/İngiltere kullanıcısı için "Reklam Gizlilik Tercihleri" satırı. */
+    val privacyOptionsRequired: StateFlow<Boolean> = adMobManager.privacyOptionsRequired
+
+    fun showPrivacyOptions(activity: Activity) = adMobManager.showPrivacyOptions(activity)
+
+    fun debugShowEeaConsentForm(activity: Activity) = adMobManager.debugShowEeaConsentForm(activity)
 
     private val notificationsEnabled = MutableStateFlow(pushRegistrar.notificationsEnabled())
 

@@ -18,6 +18,11 @@ import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.appopen.AppOpenAd
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.ump.ConsentDebugSettings
+import com.google.android.ump.ConsentInformation
+import com.google.android.ump.ConsentRequestParameters
+import com.google.android.ump.UserMessagingPlatform
+import java.util.concurrent.atomic.AtomicBoolean
 import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.billing.PurchaseManager
@@ -93,10 +98,98 @@ class AdMobManager @Inject constructor(
         // ekranı biniyordu. Reklam gösterilmeyecek her yol kapıyı açıyor;
         // hiçbiri çalışmazsa zaman aşımı açıyor.
         beginColdStartGate()
+    }
 
+    // ── Onay (UMP) ve SDK başlatma ───────────────────────────────────────────
+
+    private val consentInfo: ConsentInformation =
+        UserMessagingPlatform.getConsentInformation(context)
+    private val sdkStartRequested = AtomicBoolean(false)
+
+    /**
+     * AEA/İngiltere kullanıcısı onayını sonradan değiştirebilmeli; Ayarlar'daki
+     * "Reklam Gizlilik Tercihleri" satırı buna göre görünür. Türkiye'de false.
+     */
+    private val _privacyOptionsRequired = MutableStateFlow(false)
+    val privacyOptionsRequired: StateFlow<Boolean> = _privacyOptionsRequired.asStateFlow()
+
+    /**
+     * Açılışta bir kez (MainActivity): önce onay, sonra reklam SDK'sı. Onay
+     * yoksa AEA'da AdMob yalnızca sınırlı reklam veriyor; Türkiye'de form
+     * çıkmıyor.
+     *
+     * Pro kullanıcıda ikisi de hiç başlamıyor — hiç görmeyeceği reklamlar için
+     * onay formu çıkıyordu. Diskteki Pro durumuna bakılıyor; abonelik oturum
+     * içinde biterse reklamlar bir sonraki açılışta başlıyor.
+     */
+    suspend fun start(activity: Activity) {
+        if (purchaseManager.cachedIsPro()) {
+            openColdStartGate()
+            return
+        }
+        // Önceki oturumdan onay varsa beklemeden başla.
+        if (consentInfo.canRequestAds()) initializeSdk()
+        requestConsent(activity, forceEea = false)
+    }
+
+    private fun requestConsent(activity: Activity, forceEea: Boolean) {
+        val params = ConsentRequestParameters.Builder().apply {
+            if (forceEea) {
+                setConsentDebugSettings(
+                    ConsentDebugSettings.Builder(context)
+                        .setDebugGeography(ConsentDebugSettings.DebugGeography.DEBUG_GEOGRAPHY_EEA)
+                        .build()
+                )
+            }
+        }.build()
+
+        consentInfo.requestConsentInfoUpdate(
+            activity,
+            params,
+            {
+                UserMessagingPlatform.loadAndShowConsentFormIfRequired(activity) { formError ->
+                    formError?.let { Log.w(TAG, "Onay formu: ${it.message}") }
+                    updatePrivacyOptions()
+                    initializeSdk()
+                }
+            },
+            { error ->
+                // Örn. AdMob'da GDPR mesajı yayınlanmamış: SDK eskisi gibi başlasın,
+                // yoksa herkes için reklam durur.
+                Log.w(TAG, "Onay bilgisi alınamadı: ${error.message}")
+                initializeSdk()
+            }
+        )
+    }
+
+    private fun updatePrivacyOptions() {
+        _privacyOptionsRequired.value = consentInfo.privacyOptionsRequirementStatus ==
+            ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED
+    }
+
+    /** Ayarlar → "Reklam Gizlilik Tercihleri". */
+    fun showPrivacyOptions(activity: Activity) {
+        UserMessagingPlatform.showPrivacyOptionsForm(activity) { error ->
+            error?.let { Log.w(TAG, "Gizlilik formu: ${it.message}") }
+        }
+    }
+
+    /**
+     * Yalnızca debug: onayı sıfırlayıp AEA'daymış gibi formu açar. Türkiye'den
+     * form hiç çıkmadığı için başka test yolu yok (emülatör test cihazı sayılır).
+     */
+    fun debugShowEeaConsentForm(activity: Activity) {
+        if (!BuildConfig.DEBUG) return
+        consentInfo.reset()
+        requestConsent(activity, forceEea = true)
+    }
+
+    private fun initializeSdk() {
+        if (!sdkStartRequested.compareAndSet(false, true)) return
         MobileAds.initialize(context) {
             _isInitialized.value = true
             Log.d(TAG, "Mobile Ads SDK hazır")
+            // Açılıştaki erken preload SDK hazır olmadan düşüyordu; burada telafi.
             if (adsEnabled) {
                 loadAppOpenAd()
                 loadInterstitialAd()
