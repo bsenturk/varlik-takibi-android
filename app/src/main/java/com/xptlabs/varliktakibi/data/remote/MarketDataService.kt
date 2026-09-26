@@ -25,9 +25,26 @@ class MarketDataService @Inject constructor(
     private val client: SupabaseClient
 ) {
 
-    /** `assets_prices` tablosundaki tüm güncel fiyat satırları. */
+    /**
+     * `assets_prices` tablosundaki tüm güncel fiyat satırları.
+     *
+     * PostgREST tek yanıtta en fazla `max-rows` (Supabase: 1000) satır veriyor;
+     * tablo bunu geçince sırasız sorgunun kuyruğu sessizce düşüyordu (ABD ETF'leri,
+     * bazı ABD/BIST hisseleri). Sayfalı okunuyor; (symbol, currency) tekil anahtar,
+     * sıra sayfalar arasında kararlı.
+     */
     suspend fun fetchLivePrices(): List<AssetPrice> = withContext(Dispatchers.IO) {
-        client.from(TABLE).select().decodeList<AssetPrice>()
+        val all = mutableListOf<AssetPrice>()
+        do {
+            val from = all.size.toLong()
+            val page = client.from(TABLE).select {
+                order("symbol", Order.ASCENDING)
+                order("currency", Order.ASCENDING)
+                range(from, from + PAGE_SIZE - 1)
+            }.decodeList<AssetPrice>()
+            all += page
+        } while (page.size == PAGE_SIZE)
+        all
     }
 
     /**
@@ -75,6 +92,8 @@ class MarketDataService @Inject constructor(
 
     private companion object {
         const val TABLE = "assets_prices"
+        // ponytail: sunucunun max-rows'undan büyük olmamalı
+        const val PAGE_SIZE = 1000
         val json = Json { ignoreUnknownKeys = true }
     }
 }
