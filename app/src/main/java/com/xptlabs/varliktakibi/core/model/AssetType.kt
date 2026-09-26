@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.CurrencyBitcoin
@@ -36,6 +37,7 @@ enum class AssetCategory(
     CRYPTO("Kripto", Icons.Filled.CurrencyBitcoin, "#F7931A"),
     BIST("Borsa İstanbul", Icons.AutoMirrored.Filled.ShowChart, "#E63946"),
     US_STOCK("ABD Borsası", Icons.Filled.AccountBalance, "#2A9D8F"),
+    US_ETF("ABD ETF", Icons.Filled.Layers, "#0A84FF"),
     FUND("Fon", Icons.Filled.PieChart, "#5856D6"),
     PHYSICAL("Fiziksel Varlık", Icons.Filled.Home, "#A2845E"),
     BES("BES", Icons.Filled.BeachAccess, "#FF2D55");
@@ -55,13 +57,16 @@ enum class AssetCategory(
             GOLD, SILVER -> listOf("Ev", "Banka", "Kiralık Kasa")
             CURRENCY -> listOf("Banka", "Nakit / Ev", "Kiralık Kasa")
             CRYPTO -> listOf("Kripto Borsası", "Soğuk Cüzdan", "Sıcak Cüzdan")
-            BIST, US_STOCK, FUND -> listOf("Banka", "Aracı Kurum")
+            BIST, US_STOCK, US_ETF, FUND -> listOf("Banka", "Aracı Kurum")
             // Evin/arsanın kendisi zaten bir yer, BES'in yeri de şirketi.
             PHYSICAL, BES -> emptyList()
         }
 
-    /** Varlık Pro gerektiren kategoriler. */
-    val isPremium: Boolean get() = this == FUND
+    /**
+     * Varlık Pro gerektiren kategoriler. ETF ayrı bir Pro özelliği değil, "Fon
+     * ve ETF" olarak fonla aynı özelliğin parçası.
+     */
+    val isPremium: Boolean get() = this == FUND || this == US_ETF
 
     /** Dinamik kategoriler için `assets_prices.asset_type` değeri. */
     val backendAssetType: String?
@@ -69,6 +74,7 @@ enum class AssetCategory(
             CRYPTO -> "crypto"
             BIST -> "bist"
             US_STOCK -> "us_stock"
+            US_ETF -> "us_etf"
             FUND -> "fund"
             GOLD, SILVER, CURRENCY, PHYSICAL, BES -> null
         }
@@ -79,6 +85,7 @@ enum class AssetCategory(
             CRYPTO -> AssetType.CRYPTO
             BIST -> AssetType.BIST_STOCK
             US_STOCK -> AssetType.US_STOCK
+            US_ETF -> AssetType.US_ETF
             FUND -> AssetType.FUND
             GOLD, SILVER, CURRENCY, PHYSICAL, BES -> null
         }
@@ -148,6 +155,7 @@ enum class AssetType(val id: String) {
     CRYPTO("crypto"),
     BIST_STOCK("bist_stock"),
     US_STOCK("us_stock"),
+    US_ETF("us_etf"),
     FUND("fund"),
 
     // Elle değer girilen varlıklar. Her biri kendine özel bir `Asset.symbol`
@@ -169,7 +177,8 @@ enum class AssetType(val id: String) {
 
     /** Sembolle sürülen jenerik piyasa türü mü (kripto / hisse / fon)? */
     val isDynamic: Boolean
-        get() = this == CRYPTO || this == BIST_STOCK || this == US_STOCK || this == FUND
+        get() = this == CRYPTO || this == BIST_STOCK || this == US_STOCK ||
+            this == US_ETF || this == FUND
 
     val displayName: String
         get() = fx?.displayName ?: manual?.displayName ?: when (this) {
@@ -191,6 +200,7 @@ enum class AssetType(val id: String) {
             CRYPTO -> "Kripto Para"
             BIST_STOCK -> "BIST Hisse"
             US_STOCK -> "ABD Hisse"
+            US_ETF -> "ABD ETF"
             FUND -> "Yatırım Fonu"
             else -> id
         }
@@ -201,7 +211,7 @@ enum class AssetType(val id: String) {
     val unit: String
         get() = fx?.symbol ?: when (this) {
             GOLD, SILVER -> "gram"
-            BIST_STOCK, US_STOCK -> "lot"
+            BIST_STOCK, US_STOCK, US_ETF -> "lot"
             else -> "adet"
         }
 
@@ -214,6 +224,7 @@ enum class AssetType(val id: String) {
             CRYPTO -> Icons.Filled.CurrencyBitcoin
             BIST_STOCK -> Icons.AutoMirrored.Filled.ShowChart
             US_STOCK -> Icons.Filled.AccountBalance
+            US_ETF -> Icons.Filled.Layers
             FUND -> Icons.Filled.PieChart
             else -> if (fx != null) Icons.Filled.Payments else Icons.Filled.Hive
         }
@@ -224,6 +235,7 @@ enum class AssetType(val id: String) {
             CRYPTO -> "#F7931A"
             BIST_STOCK -> "#E63946"
             US_STOCK -> "#2A9D8F"
+            US_ETF -> "#0A84FF"
             FUND -> "#5856D6"
             else -> "#FFB300"
         }
@@ -249,7 +261,7 @@ enum class AssetType(val id: String) {
             GOLD_TWO_AND_HALF -> "IKIBUCUK_ALTIN"
             GOLD_TWENTYTWO_BRACELET -> "22_AYAR_BILEZIK"
             SILVER -> "GRAM_GUMUS"
-            CRYPTO, BIST_STOCK, US_STOCK, FUND -> ""
+            CRYPTO, BIST_STOCK, US_STOCK, US_ETF, FUND -> ""
             // Elle girilenlerin sabit sembolü yok — `Asset.symbol` varlığa özel.
             HOUSE, CAR, LAND, SHOP, BES -> ""
             else -> id.uppercase()
@@ -263,6 +275,7 @@ enum class AssetType(val id: String) {
             this == CRYPTO -> AssetCategory.CRYPTO
             this == BIST_STOCK -> AssetCategory.BIST
             this == US_STOCK -> AssetCategory.US_STOCK
+            this == US_ETF -> AssetCategory.US_ETF
             this == FUND -> AssetCategory.FUND
             else -> AssetCategory.GOLD
         }

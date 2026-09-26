@@ -21,17 +21,17 @@ enum class PaywallContext(val key: String, val headline: String, val subtitle: S
     GENERAL(
         "general",
         "Portföyünün\ntamamını gör.",
-        "Sınırsız portföy, TEFAS fonları ve reklamsız bir deneyim."
+        "Sınırsız portföy, TEFAS fonları, ABD ETF'leri ve reklamsız bir deneyim."
     ),
     ONBOARDING(
         "onboarding",
         "Portföyünün\ntamamını gör.",
-        "Sınırsız portföy, TEFAS fonları ve reklamsız bir deneyim."
+        "Sınırsız portföy, TEFAS fonları, ABD ETF'leri ve reklamsız bir deneyim."
     ),
     FUND(
         "fund",
-        "Fonlarını da\nburada takip et.",
-        "TEFAS fonlarını ara, ekle ve portföyünle birlikte değerlendir."
+        "Fon ve ETF'lerini de\nburada takip et.",
+        "TEFAS fonları ve ABD ETF'leri Pro ile açılıyor; ekle ve portföyünle birlikte değerlendir."
     ),
     PORTFOLIO_LIMIT(
         "portfolio_limit",

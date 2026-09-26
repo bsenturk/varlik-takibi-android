@@ -46,7 +46,7 @@ import com.xptlabs.varliktakibi.ui.theme.AppColors
 
 private val PRO_PERKS = listOf(
     "Sınırsız portföy",
-    "TEFAS yatırım fonları",
+    "TEFAS fonları ve ABD ETF'leri",
     "Reklamsız deneyim"
 )
 

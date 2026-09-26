@@ -193,7 +193,7 @@ class MarketDataStore @Inject constructor(
     private fun displayName(symbol: String, rawName: String?, backendType: String): String =
         when (backendType) {
             "bist" -> symbol.removeSuffix(".IS")
-            "us_stock" -> symbol
+            "us_stock", "us_etf" -> symbol
             "crypto" -> rawName?.takeIf { it.isNotBlank() }
                 ?.split(" ")?.joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } }
                 ?: symbol

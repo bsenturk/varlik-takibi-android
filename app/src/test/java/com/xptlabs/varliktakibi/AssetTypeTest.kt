@@ -72,6 +72,8 @@ class AssetTypeTest {
         assertEquals("bist", AssetCategory.BIST.backendAssetType)
         assertEquals("us_stock", AssetCategory.US_STOCK.backendAssetType)
         assertEquals("fund", AssetCategory.FUND.backendAssetType)
+        assertEquals("us_etf", AssetCategory.US_ETF.backendAssetType)
+        assertTrue(AssetCategory.US_ETF.isPremium)
         assertEquals(null, AssetCategory.GOLD.backendAssetType)
     }
 

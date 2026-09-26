@@ -261,7 +261,7 @@ private fun ProBanner(onClick: () -> Unit) {
     ) {
         Text(text = "Pro'ya geç", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         Text(
-            text = "Sınırsız portföy · TEFAS · Reklamsız",
+            text = "Sınırsız portföy · Fon & ETF · Reklamsız",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
