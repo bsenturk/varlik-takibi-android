@@ -144,6 +144,9 @@ dependencies {
     // AdMob
     implementation(libs.play.services.ads)
 
+    // Ana ekran widget'ı (Pro)
+    implementation(libs.glance.appwidget)
+
     // Kripto/hisse logoları
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)

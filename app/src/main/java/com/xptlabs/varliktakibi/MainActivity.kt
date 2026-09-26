@@ -1,6 +1,9 @@
 package com.xptlabs.varliktakibi
 
+import android.content.Intent
 import android.os.Bundle
+import androidx.compose.runtime.mutableStateOf
+import com.xptlabs.varliktakibi.widget.PortfolioWidget
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -38,9 +41,15 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var prefs: AppPreferences
     @Inject lateinit var pushRegistrar: PushRegistrar
 
+    /** Kilitli widget'a dokunulup açıldıysa paywall gösterilecek. */
+    private val widgetPaywallRequest = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) {
+            widgetPaywallRequest.value = intent.getBooleanExtra(EXTRA_OPEN_PAYWALL, false)
+        }
 
         // Fiyat yenileme yalnızca ekran öndeyken dönsün; arka planda günlük
         // anlık görüntüyü SnapshotWorker yazıyor.
@@ -64,7 +73,11 @@ class MainActivity : ComponentActivity() {
 
         // Pro durumu değişince reklam yüzeylerini anında güncelle.
         lifecycleScope.launch {
-            purchaseManager.isPro.collect { adMobManager.onProStatusChanged(it) }
+            purchaseManager.isPro.collect {
+                adMobManager.onProStatusChanged(it)
+                // Abonelik bitince kullanıcı uygulamayı açmasa da widget kilide düşsün.
+                PortfolioWidget.refresh(applicationContext)
+            }
         }
 
         setContent {
@@ -84,10 +97,28 @@ class MainActivity : ComponentActivity() {
                 ) {
                     AppRoot(
                         adMobManager = adMobManager,
-                        purchaseManager = purchaseManager
+                        purchaseManager = purchaseManager,
+                        widgetPaywallRequested = widgetPaywallRequest.value,
+                        onWidgetPaywallConsumed = { widgetPaywallRequest.value = false }
                     )
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_PAYWALL, false)) widgetPaywallRequest.value = true
+    }
+
+    /** Uygulamadan çıkarken widget son değişiklikleri (varlık, portföy, göz) alsın. */
+    override fun onStop() {
+        super.onStop()
+        lifecycleScope.launch { PortfolioWidget.refresh(applicationContext) }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_PAYWALL = "open_paywall"
     }
 }

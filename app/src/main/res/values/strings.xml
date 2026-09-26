@@ -3,4 +3,6 @@
     <string name="notification_channel_id">market_alerts</string>
     <string name="notification_channel_name">Piyasa Uyarıları</string>
     <string name="notification_channel_description">Altın, döviz ve borsada belirgin hareket olduğunda bildirim.</string>
+    <string name="widget_name">Portföy Bakiyesi</string>
+    <string name="widget_description">Seçili portföyünün toplam değerini ve kâr/zararını ana ekranında gör. Varlık Pro gerektirir.</string>
 </resources>

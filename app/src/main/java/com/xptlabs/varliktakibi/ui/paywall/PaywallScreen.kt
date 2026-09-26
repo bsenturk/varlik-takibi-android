@@ -49,6 +49,7 @@ import com.xptlabs.varliktakibi.ui.theme.AppColors
 private val PRO_PERKS = listOf(
     "Sınırsız portföy",
     "TEFAS fonları ve ABD ETF'leri",
+    "Ana ekran widget'ı",
     "Reklamsız deneyim"
 )
 

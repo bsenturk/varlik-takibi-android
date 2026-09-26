@@ -47,6 +47,9 @@ import com.xptlabs.varliktakibi.ui.settings.SettingsScreen
 fun AppRoot(
     adMobManager: AdMobManager,
     purchaseManager: PurchaseManager,
+    /** Kilitli widget'a dokunuldu: paywall doğrudan açılmalı. */
+    widgetPaywallRequested: Boolean = false,
+    onWidgetPaywallConsumed: () -> Unit = {},
     viewModel: AppRootViewModel = hiltViewModel()
 ) {
     val onboardingCompleted by viewModel.onboardingCompleted.collectAsStateWithLifecycle()
@@ -65,6 +68,8 @@ fun AppRoot(
         true -> MainContent(
             adMobManager = adMobManager,
             purchaseManager = purchaseManager,
+            widgetPaywallRequested = widgetPaywallRequested,
+            onWidgetPaywallConsumed = onWidgetPaywallConsumed,
             viewModel = viewModel
         )
     }
@@ -74,6 +79,8 @@ fun AppRoot(
 private fun MainContent(
     adMobManager: AdMobManager,
     purchaseManager: PurchaseManager,
+    widgetPaywallRequested: Boolean,
+    onWidgetPaywallConsumed: () -> Unit,
     viewModel: AppRootViewModel
 ) {
     val activity = LocalActivity.current
@@ -87,6 +94,13 @@ private fun MainContent(
     var paywallContext by remember { mutableStateOf<PaywallContext?>(null) }
     var showFeedback by remember { mutableStateOf(false) }
     var showCurrencyPicker by remember { mutableStateOf(false) }
+
+    LaunchedEffect(widgetPaywallRequested) {
+        if (widgetPaywallRequested) {
+            paywallContext = PaywallContext.WIDGET
+            onWidgetPaywallConsumed()
+        }
+    }
     // Ekleme akışının kapanışını olay olarak taşıyoruz: doğrudan `showAddAsset`
     // üzerinde LaunchedEffect kurmak ilk kompozisyonda da tetikleniyor ve
     // onboarding paywall bayrağını daha ekran açılmadan tüketiyordu.

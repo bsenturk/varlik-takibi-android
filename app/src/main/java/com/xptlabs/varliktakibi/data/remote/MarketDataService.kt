@@ -47,6 +47,13 @@ class MarketDataService @Inject constructor(
         all
     }
 
+    /** Yalnızca verilen sembollerin güncel satırları (widget: tüm tabloyu çekmesin). */
+    suspend fun fetchPrices(symbols: Collection<String>): List<AssetPrice> =
+        withContext(Dispatchers.IO) {
+            if (symbols.isEmpty()) return@withContext emptyList()
+            client.from(TABLE).select { filter { isIn("symbol", symbols.toList()) } }.decodeList()
+        }
+
     /**
      * Verilen sembollerin [from, to] aralığındaki kapanış fiyatları. Time Machine
      * eksik günleri bununla yeniden kuruyor.

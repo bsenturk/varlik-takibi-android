@@ -93,26 +93,8 @@ class MarketDataStore @Inject constructor(
 
     // ── TL fiyatlandırma ─────────────────────────────────────────────────────
 
-    /** 1 USD kaç TL — USD fiyatlı enstrümanları çevirmek için. */
-    private val usdToTry: Double?
-        get() = _prices.value.firstOrNull { it.symbol == "USD" && it.currency == "TRY" }?.price
-
-    /**
-     * Sembolün TL cinsinden güncel fiyatı. Önce doğal TRY satırı; yoksa USD
-     * satırı canlı kurla çevrilir. Bulunamazsa **null** — sabit bir varsayılan
-     * fiyat döndürmek bayat veriyi gerçekmiş gibi gösterirdi.
-     */
-    fun tryPrice(symbol: String): Double? {
-        if (symbol == "TRY") return 1.0
-        val rows = _prices.value.filter { it.symbol == symbol }
-        if (rows.isEmpty()) return null
-
-        rows.firstOrNull { it.currency == "TRY" }?.let { return it.price }
-        val usdRow = rows.firstOrNull { it.currency == "USD" }
-        val rate = usdToTry
-        if (usdRow != null && rate != null) return usdRow.price * rate
-        return null
-    }
+    /** Sembolün TL cinsinden güncel fiyatı (bkz. [tryPriceIn]). */
+    fun tryPrice(symbol: String): Double? = tryPriceIn(_prices.value, symbol)
 
     /** Sembolün gün içi değişim yüzdesi (backend'in hesapladığı). */
     fun changePercent(symbol: String): Double? =
@@ -285,6 +267,22 @@ class MarketDataStore @Inject constructor(
 
     companion object {
         private const val TAG = "MarketDataStore"
+
+        /**
+         * Verilen satırlarda sembolün TL fiyatı. Önce doğal TRY satırı; yoksa USD
+         * satırı canlı kurla çevrilir. Bulunamazsa **null** — sabit bir varsayılan
+         * fiyat döndürmek bayat veriyi gerçekmiş gibi gösterirdi. Widget da kendi
+         * çektiği satırlarla aynı kuralı kullanıyor.
+         */
+        fun tryPriceIn(prices: List<AssetPrice>, symbol: String): Double? {
+            if (symbol == "TRY") return 1.0
+            val rows = prices.filter { it.symbol == symbol }
+            rows.firstOrNull { it.currency == "TRY" }?.let { return it.price }
+            val usdRow = rows.firstOrNull { it.currency == "USD" } ?: return null
+            val rate = prices.firstOrNull { it.symbol == "USD" && it.currency == "TRY" }?.price
+                ?: return null
+            return usdRow.price * rate
+        }
 
         /** Genel kuralın ("shiba-inu" → "Shiba Inu") yanlış sonuç verdiği id'ler. */
         private val CRYPTO_NAMES = mapOf(

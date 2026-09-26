@@ -50,6 +50,11 @@ enum class PaywallContext(val key: String, val headline: String, val subtitle: S
         "Her hedefe\nayrı portföy.",
         "Emeklilik, tatil, acil durum… Sınırsız portföy aç."
     ),
+    WIDGET(
+        "widget",
+        "Portföyün\nana ekranında.",
+        "Ana ekran widget'ı Pro ile açılıyor — diğer özelliklerle birlikte."
+    ),
     ADS(
         "ads",
         "Reklamlar olmadan\ndaha rahat.",
