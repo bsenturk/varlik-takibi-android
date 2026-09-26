@@ -30,8 +30,8 @@ android {
         minSdk = 24
         targetSdk = 36
         // Play'e gönderilen en yüksek sürüm 8 (reddedildi); üstüne çıkılıyor.
-        versionCode = 10
-        versionName = "3.0.6"
+        versionCode = 11
+        versionName = "3.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
