@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.billing.PurchaseManager
+import com.xptlabs.varliktakibi.core.ext.searchMatches
 import com.xptlabs.varliktakibi.core.model.AssetCategory
 import com.xptlabs.varliktakibi.data.local.entity.PortfolioEntity
 import com.xptlabs.varliktakibi.data.prefs.AppPreferences
@@ -190,8 +191,7 @@ class AddAssetViewModel @Inject constructor(
         val query = state.query.trim()
         if (query.isEmpty()) return state.instruments
         return state.instruments.filter {
-            it.name.contains(query, ignoreCase = true) ||
-                it.symbol.contains(query, ignoreCase = true)
+            it.name.searchMatches(query) || it.symbol.searchMatches(query)
         }
     }
 

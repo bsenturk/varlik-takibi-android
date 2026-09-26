@@ -3,6 +3,7 @@ package com.xptlabs.varliktakibi.ui.rates
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
+import com.xptlabs.varliktakibi.core.ext.searchMatches
 import com.xptlabs.varliktakibi.core.model.AssetCategory
 import com.xptlabs.varliktakibi.market.Instrument
 import com.xptlabs.varliktakibi.market.MarketDataStore
@@ -77,10 +78,7 @@ class RatesViewModel @Inject constructor(
 
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return base
-        return base.filter {
-            it.name.contains(trimmed, ignoreCase = true) ||
-                it.symbol.contains(trimmed, ignoreCase = true)
-        }
+        return base.filter { it.name.searchMatches(trimmed) || it.symbol.searchMatches(trimmed) }
     }
 
     private fun lastUpdateLabel(instant: Instant?): String {
