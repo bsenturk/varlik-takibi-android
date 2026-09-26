@@ -1,5 +1,7 @@
 package com.xptlabs.varliktakibi.ui.portfolio
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
@@ -18,6 +20,7 @@ import com.xptlabs.varliktakibi.data.local.entity.totalCost
 import com.xptlabs.varliktakibi.data.local.entity.totalValue
 import com.xptlabs.varliktakibi.data.prefs.AppPreferences
 import com.xptlabs.varliktakibi.data.repo.PortfolioRepository
+import com.xptlabs.varliktakibi.data.repo.ProLock
 import com.xptlabs.varliktakibi.history.HistoryRecorder
 import com.xptlabs.varliktakibi.market.MarketDataStore
 import com.xptlabs.varliktakibi.ui.common.AssetRowItem
@@ -40,7 +43,15 @@ data class DashboardUiState(
     val valuesMasked: Boolean = false,
     val isRefreshing: Boolean = false,
     val errorMessage: String? = null,
-    val isPro: Boolean = false
+    val isPro: Boolean = false,
+    /** Pro bitince erişimi kapanan portföyler; chip'ler buna göre kilitlenir. */
+    val lockedPortfolioIds: Set<String> = emptySet(),
+    /**
+     * Veritabanından ilk sonuç geldi mi. Bu ayrım olmadan başlangıçtaki boş
+     * durum "hiç varlığın yok" ekranı olarak çiziliyor, veri gelince
+     * kayboluyordu — açılışta göze çarpan titreme buydu.
+     */
+    val isLoaded: Boolean = false
 ) {
     val isGeneralSelected: Boolean get() = selectedPortfolio?.isGeneral == true
     val isEmpty: Boolean get() = rows.isEmpty()
@@ -106,33 +117,51 @@ class DashboardViewModel @Inject constructor(
         error: String?,
         sparks: Map<String, List<Double>>
     ): DashboardUiState {
-        val selected = portfolios.firstOrNull { it.id == prefsSnapshot.selectedId }
+        val isPro = prefsSnapshot.isPro
+        val lockedIds = ProLock.lockedPortfolioIds(portfolios, isPro)
+
+        // Abonelik biterken seçili kalan portföy kilitlenmiş olabilir; kilidin
+        // arkasında kalmamak için Genel'e dönülüyor.
+        val selected = portfolios.firstOrNull {
+            it.id == prefsSnapshot.selectedId && it.id !in lockedIds
+        }
             ?: portfolios.firstOrNull { it.isGeneral }
             ?: portfolios.firstOrNull()
 
         val scoped = when {
             selected == null -> emptyList()
-            selected.isGeneral -> assets
+            // Genel bir toplam görünümü: kilitli portföylerin varlıkları buraya
+            // sızmamalı, yoksa kilit anlamsızlaşır.
+            selected.isGeneral -> assets.filter { it.portfolioId !in lockedIds }
             else -> assets.filter { it.portfolioId == selected.id }
         }
+        // Yalnızca bunlar tutarlara ve grafiklere giriyor (bkz. ProLock).
+        val valued = scoped.filter { !ProLock.isLocked(it, lockedIds, isPro) }
 
         return DashboardUiState(
             portfolios = portfolios,
             selectedPortfolio = selected,
-            rows = if (selected?.isGeneral == true) categoryRows(scoped, sparks)
-            else assetRows(scoped, sparks),
-            metrics = PortfolioMetrics.compute(scoped),
+            rows = if (selected?.isGeneral == true) categoryRows(valued, scoped, sparks)
+            else assetRows(scoped, sparks, lockedIds, isPro),
+            metrics = PortfolioMetrics.compute(valued),
             currency = prefsSnapshot.currency,
             valuesMasked = selected != null && selected.id in prefsSnapshot.maskedIds,
             isRefreshing = refreshing,
             errorMessage = error,
-            isPro = prefsSnapshot.isPro
+            isPro = isPro,
+            lockedPortfolioIds = lockedIds,
+            isLoaded = true
         )
     }
 
     // ── Satır üretimi ────────────────────────────────────────────────────────
 
-    private fun assetRows(assets: List<AssetEntity>, sparks: Map<String, List<Double>>) =
+    private fun assetRows(
+        assets: List<AssetEntity>,
+        sparks: Map<String, List<Double>>,
+        lockedIds: Set<String>,
+        isPro: Boolean
+    ) =
         assets
             .sortedByDescending { it.totalValue ?: 0.0 }
             .map { asset ->
@@ -147,13 +176,22 @@ class DashboardViewModel @Inject constructor(
                     icon = type.icon,
                     tintHex = type.tintHex,
                     flag = type.flag,
-                    assetId = asset.id
+                    assetId = asset.id,
+                    isLocked = ProLock.isLocked(asset, lockedIds, isPro)
                 )
             }
 
-    /** "Genel" portföyde satırlar varlık değil kategori. */
-    private fun categoryRows(assets: List<AssetEntity>, sparks: Map<String, List<Double>>) =
-        assets.groupBy { it.category }
+    /**
+     * "Genel" portföyde satırlar varlık değil kategori. [valued] tutara giren
+     * varlıklar, [scoped] kilitliler dahil hepsi — kilitli içerik listeden
+     * kaybolmuyor, tek satırlık bir özete iniyor.
+     */
+    private fun categoryRows(
+        valued: List<AssetEntity>,
+        scoped: List<AssetEntity>,
+        sparks: Map<String, List<Double>>
+    ): List<AssetRowItem> {
+        val rows = valued.groupBy { it.category }
             .mapNotNull { (category, items) ->
                 val value = items.sumOf { it.totalValue ?: 0.0 }
                 if (value <= 0) return@mapNotNull null
@@ -174,6 +212,24 @@ class DashboardViewModel @Inject constructor(
                 )
             }
             .sortedByDescending { it.value ?: 0.0 }
+
+        val lockedCount = scoped.size - valued.size
+        if (lockedCount == 0) return rows
+
+        // Kullanıcı neyi kaybettiğini görsün, ama tutar yazılmasın.
+        return rows + AssetRowItem(
+            id = "locked-summary",
+            title = "Pro içeriği",
+            subtitle = "$lockedCount varlık kilitli",
+            value = null,
+            changePercent = 0.0,
+            sparkline = emptyList(),
+            icon = Icons.Filled.Lock,
+            tintHex = "#AF52DE",
+            assetId = null,
+            isLocked = true
+        )
+    }
 
     /** Kategori satırında tüm varlıkların gün bazında toplanmış değer serisi. */
     private fun aggregateSparkline(
@@ -258,8 +314,10 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun setCurrency(currency: Currency) = viewModelScope.launch {
+        val previous = uiState.value.currency
+        if (previous == currency) return@launch
         prefs.setSelectedCurrency(currency)
-        analytics.logCurrencyChanged(currency.code)
+        analytics.logCurrencyChanged(previous.code, currency.code)
     }
 
     fun toggleMask() = viewModelScope.launch {
@@ -291,8 +349,7 @@ class DashboardViewModel @Inject constructor(
     /** Yeni portföy açılabilir mi — ücretsiz kullanıcıda limit var. */
     fun canCreatePortfolio(): Boolean {
         val state = uiState.value
-        if (state.isPro) return true
-        val allowed = state.portfolios.count { !it.isGeneral } < PortfolioRepository.FREE_PORTFOLIO_LIMIT
+        val allowed = ProLock.canCreatePortfolio(state.portfolios, state.isPro)
         if (!allowed) analytics.logPortfolioLimitReached()
         return allowed
     }

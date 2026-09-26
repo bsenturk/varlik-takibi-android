@@ -41,8 +41,14 @@ class FirebaseAnalyticsManager @Inject constructor(
         putString(FirebaseAnalytics.Param.SCREEN_NAME, screenName)
     }
 
-    fun logCurrencyChanged(currency: String) = log("currency_changed") {
-        putString("currency", currency)
+    /**
+     * Görüntüleme para birimi gerçekten değiştiğinde. `from_currency` olmadan
+     * tekrar eden değişimlerin bir gidiş-geliş mi yoksa tek yönlü bir tercih mi
+     * olduğu ayırt edilemiyor.
+     */
+    fun logCurrencyChanged(from: String, to: String) = log("currency_changed") {
+        putString("from_currency", from)
+        putString("currency", to)
     }
 
     fun logOnboardingCompleted(reachedPage: Int, skipped: Boolean) =
@@ -51,23 +57,67 @@ class FirebaseAnalyticsManager @Inject constructor(
             putBoolean("skipped", skipped)
         }
 
-    // ── Varlık ───────────────────────────────────────────────────────────────
+    // ── Varlık ekleme hunisi ─────────────────────────────────────────────────
+    //
+    // `asset_added` tek başına yalnızca BAŞARIYI logluyordu: varlık eklemeyen
+    // kullanıcının akışı hiç açmadığı mı, kategori ızgarasında mı bıraktığı,
+    // yoksa tutar ekranında mı vazgeçtiği ölçülemiyordu. Aşağıdaki dört olay
+    // adımları ayırıyor. `source` her adımda taşınıyor ki onboarding'den gelen
+    // kullanıcı ile sonradan + butonuna basan ayrılabilsin.
 
-    fun logAssetAdded(category: String, symbol: String, isMerge: Boolean, hasPurchasePrice: Boolean) =
-        log("asset_added") {
-            putString("category", category)
-            putString("symbol", symbol)
-            putBoolean("is_merge", isMerge)
-            putBoolean("has_purchase_price", hasPurchasePrice)
+    /** Varlık ekleme akışı açıldı. [source]: "onboarding" | "manual". */
+    fun logAddAssetOpened(source: String) = log("add_asset_opened") {
+        putString("source", source)
+    }
+
+    /** Kategori ızgarasından bir kategori seçildi (1. adım geçildi). */
+    fun logAddAssetCategorySelected(category: String, source: String) =
+        log("add_asset_category_selected") {
+            putString("asset_category", category)
+            putString("source", source)
         }
 
+    /** Listeden somut bir enstrüman seçildi (2. adım geçildi, tutar ekranı açıldı). */
+    fun logAddAssetInstrumentSelected(category: String, symbol: String, source: String) =
+        log("add_asset_instrument_selected") {
+            putString("asset_category", category)
+            putString("asset_symbol", symbol)
+            putString("source", source)
+        }
+
+    /**
+     * Akış varlık eklenmeden kapatıldı. [step] ulaşılan **en derin** adım
+     * ("category" | "type_list" | "amount") — geri dönülse bile. Huninin nerede
+     * koptuğunu gösteren asıl olay bu.
+     */
+    fun logAddAssetAbandoned(step: String, category: String?, source: String) =
+        log("add_asset_abandoned") {
+            putString("step", step)
+            category?.let { putString("asset_category", it) }
+            putString("source", source)
+        }
+
+    fun logAssetAdded(
+        category: String,
+        symbol: String,
+        isMerge: Boolean,
+        hasPurchasePrice: Boolean,
+        source: String
+    ) = log("asset_added") {
+        putString("asset_category", category)
+        putString("asset_symbol", symbol)
+        putBoolean("is_merge", isMerge)
+        putBoolean("has_purchase_price", hasPurchasePrice)
+        putString("source", source)
+    }
+
     fun logAssetDeleted(category: String, symbol: String) = log("asset_deleted") {
-        putString("category", category)
-        putString("symbol", symbol)
+        putString("asset_category", category)
+        putString("asset_symbol", symbol)
     }
 
     fun logPremiumCategoryLocked(category: String) = log("premium_category_locked") {
-        putString("category", category)
+        putString("asset_category", category)
     }
 
     // ── Portföy ──────────────────────────────────────────────────────────────
@@ -106,8 +156,13 @@ class FirebaseAnalyticsManager @Inject constructor(
         putBoolean("has_trial", hasTrial)
     }
 
-    fun logPaywallDismissed(context: String) = log("paywall_dismissed") {
+    /**
+     * Paywall satın alma yapılmadan kapatıldı. [secondsShown] refleks kapatma
+     * ile "okudu ama ikna olmadı"yı ayırır.
+     */
+    fun logPaywallDismissed(context: String, secondsShown: Int) = log("paywall_dismissed") {
         putString("context", context)
+        putLong("seconds_shown", secondsShown.toLong())
     }
 
     fun logSubscriptionPurchased(plan: String, hadTrial: Boolean) = log("subscription_purchased") {
@@ -115,9 +170,19 @@ class FirebaseAnalyticsManager @Inject constructor(
         putBoolean("had_trial", hadTrial)
     }
 
-    fun logSubscriptionPurchaseFailed(plan: String) = log("subscription_purchase_failed") {
-        putString("plan", plan)
-    }
+    /**
+     * Satın alma tamamlanmadı. [reason] olmadan kullanıcı iptali ile gerçek
+     * store hatası aynı sayıya düşüyor ve huninin son adımı okunamıyor.
+     *
+     * @param reason "cancelled" (kullanıcı Play sayfasını kapattı) ya da "error"
+     * @param errorCode RevenueCat/Play Billing hata kodu; iptalde null
+     */
+    fun logSubscriptionPurchaseFailed(plan: String, reason: String, errorCode: Int?) =
+        log("subscription_purchase_failed") {
+            putString("plan", plan)
+            putString("reason", reason)
+            errorCode?.let { putLong("error_code", it.toLong()) }
+        }
 
     fun logSubscriptionRestored() = log("subscription_restored") {}
 
@@ -132,18 +197,63 @@ class FirebaseAnalyticsManager @Inject constructor(
         putLong("asset_count", assetCount.toLong())
     }
 
+    // ── İzinler ──────────────────────────────────────────────────────────────
+
+    /**
+     * Bildirim izni diyalogunun sonucu — iOS'taki `att_result`'ın Android
+     * karşılığı. Yalnızca reddi loglamak izin oranını hesaplanamaz bırakırdı;
+     * her sonuç tek olaya yazılıyor.
+     */
+    fun logNotificationPermissionResult(granted: Boolean) =
+        log("notification_permission_result") {
+            putString("status", if (granted) "granted" else "denied")
+        }
+
     // ── Reklam ───────────────────────────────────────────────────────────────
 
-    fun logAdEvent(event: String, adType: String, detail: String? = null) = log(event) {
-        putString("ad_type", adType)
-        detail?.let { putString("detail", it) }
-    }
+    /**
+     * Olay adı iOS ile birebir aynı olsun diye `<adType>_ad_<action>` biçiminde
+     * kuruluyor: `app_open_ad_loaded`, `interstitial_ad_dismissed`,
+     * `banner_ad_impression`…
+     *
+     * @param action "loaded" | "load_failed" | "will_present" | "did_present" |
+     *   "dismissed" | "present_failed" | "impression" | "clicked"
+     */
+    fun logAdEvent(action: String, adType: String, errorMessage: String? = null) =
+        log("${adType}_ad_$action") {
+            putString("ad_type", adType)
+            errorMessage?.let { putString("error_message", it.take(100)) }
+        }
 
-    // ── Hata ─────────────────────────────────────────────────────────────────
-
-    fun logError(errorType: String, message: String) = log("app_error") {
-        putString("error_type", errorType)
-        putString("message", message.take(100))
+    /**
+     * AdMob'un impression bazlı gelir bildirimi (`OnPaidEventListener`).
+     * Firebase'in standart `ad_impression` olayı olarak yazılıyor; GA4 bunu
+     * gelir sayıyor, yani AdMob↔GA4 hesap bağlantısı olmadan da reklam geliri
+     * raporlarda görünüyor.
+     */
+    fun logAdRevenue(
+        valueMicros: Long,
+        currencyCode: String,
+        precisionType: Int,
+        format: String,
+        adUnitId: String,
+        source: String?
+    ) = log(FirebaseAnalytics.Event.AD_IMPRESSION) {
+        putString(FirebaseAnalytics.Param.AD_PLATFORM, "AdMob")
+        putString(FirebaseAnalytics.Param.AD_FORMAT, format)
+        putString(FirebaseAnalytics.Param.AD_UNIT_NAME, adUnitId)
+        putString(FirebaseAnalytics.Param.AD_SOURCE, source ?: "unknown")
+        putLong("precision", precisionType.toLong())
+        // GA4, currency geçersizse `value`'yu sessizce yok sayıyor — gelir
+        // kaybolur ve nedeni raporda görünmez. Geçerli ISO-4217 yoksa olay yine
+        // gönderiliyor (impression sayımı için) ama tutar yazılmıyor.
+        if (currencyCode.length == 3) {
+            putString(FirebaseAnalytics.Param.CURRENCY, currencyCode)
+            // valueMicros mikro cinsinden: 1.000.000 mikro = 1 birim.
+            putDouble(FirebaseAnalytics.Param.VALUE, valueMicros / 1_000_000.0)
+        } else {
+            putString("invalid_currency", currencyCode.ifEmpty { "empty" })
+        }
     }
 
     private inline fun log(name: String, block: Bundle.() -> Unit) {

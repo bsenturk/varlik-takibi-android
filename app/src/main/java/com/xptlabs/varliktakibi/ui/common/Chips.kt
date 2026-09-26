@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -47,7 +48,9 @@ fun SelectableChip(
     /** Seçili değilken yazının önünde gösterilen renk noktası. */
     dotColor: Color? = null,
     trailingIcon: ImageVector? = null,
-    trailingContentDescription: String? = null
+    trailingContentDescription: String? = null,
+    /** Pro bitince ücretsiz sınırın dışında kalan portföy: önünde kilit durur. */
+    isLocked: Boolean = false
 ) {
     val shape = RoundedCornerShape(percent = 50)
 
@@ -64,12 +67,20 @@ fun SelectableChip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        if (!isSelected && dotColor != null) {
+        if (!isSelected && dotColor != null && !isLocked) {
             Box(
                 modifier = Modifier
                     .size(8.dp)
                     .clip(CircleShape)
                     .background(dotColor)
+            )
+        }
+        if (isLocked) {
+            Icon(
+                imageVector = Icons.Filled.Lock,
+                contentDescription = null,
+                tint = if (isSelected) Color.White else AppColors.pro,
+                modifier = Modifier.size(12.dp)
             )
         }
         Text(
@@ -101,6 +112,7 @@ fun PortfolioChip(
     isSelected: Boolean,
     /** Seçili chip'e tekrar dokunmak düzenleme açıyorsa kalem gösterilir. */
     showsEditPencil: Boolean = true,
+    isLocked: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -109,10 +121,12 @@ fun PortfolioChip(
         isSelected = isSelected,
         onClick = onClick,
         modifier = modifier,
+        isLocked = isLocked,
         gradient = portfolio.color.gradient,
         // "Genel" bir toplayıcı, kendi rengi yok.
         dotColor = if (portfolio.isGeneral) null else portfolio.color.color,
-        trailingIcon = if (!portfolio.isGeneral && showsEditPencil) Icons.Filled.Edit else null,
+        trailingIcon = if (!portfolio.isGeneral && showsEditPencil && !isLocked) Icons.Filled.Edit
+        else null,
         trailingContentDescription = "Portföyü düzenle"
     )
 }

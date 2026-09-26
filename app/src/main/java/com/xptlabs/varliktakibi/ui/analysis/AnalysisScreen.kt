@@ -63,16 +63,19 @@ fun AnalysisScreen(viewModel: AnalysisViewModel = hiltViewModel()) {
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(state.portfolios, key = { it.id }) { portfolio ->
+                val isLocked = portfolio.id in state.lockedPortfolioIds
                 PortfolioChip(
                     portfolio = portfolio,
                     isSelected = portfolio.id == state.selectedPortfolio?.id,
                     // Analiz sayfasında chip düzenleme açmıyor.
                     showsEditPencil = false,
-                    onClick = { viewModel.selectPortfolio(portfolio) }
+                    isLocked = isLocked,
+                    onClick = { if (!isLocked) viewModel.selectPortfolio(portfolio) }
                 )
             }
         }
 
+        if (!state.isLoaded) return@Column
         if (state.isEmpty) {
             EmptyState()
             return@Column

@@ -82,6 +82,9 @@ object AppColors {
         @Composable @ReadOnlyComposable
         get() = if (isDark()) ElevatedCardDark else FillLight
 
+    /** Pro rozeti ve kilit işaretleri — iOS `ProStyle.accent`. */
+    val pro: Color get() = SystemPurple
+
     @Composable @ReadOnlyComposable
     private fun isDark() = MaterialTheme.colorScheme.background == GroupedBackgroundDark
 

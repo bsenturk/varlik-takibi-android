@@ -4,9 +4,14 @@ import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdValue
+import com.google.android.gms.ads.OnPaidEventListener
+import com.google.android.gms.ads.ResponseInfo
 import com.google.android.gms.ads.FullScreenContentCallback
 import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
@@ -53,12 +58,29 @@ class AdMobManager @Inject constructor(
     private var appOpenLoadedAt = 0L
     private var loadingAppOpen = false
     /**
-     * Reklamın gösterilmeyi beklediğini işaretler. İlk açılışta **false**:
-     * app-open reklamını soğuk açılışta göstermek kullanıcının ilk deneyimini
-     * (onboarding dahil) reklamla karşılıyor. Yalnızca gerçek bir arka plandan
-     * dönüşte açılıyor — Google'ın da önerdiği davranış.
+     * Reklamın gösterilmeyi beklediği pencerenin bitiş anı. Yükleme bittiğinde
+     * pencere kapanmışsa gösterilmez: kullanıcı çoktan uygulamayı kullanmaya
+     * başlamışken ekrana reklam düşmesin.
      */
-    private var appOpenPending = false
+    private var appOpenPendingUntil = 0L
+    private var coldStartHandled = false
+
+    /**
+     * Soğuk açılış kapısı: açılış ekranı, app-open reklamı gösterilene KADAR
+     * içeriğin üstünde durur.
+     *
+     * Eskiden reklam yüklenene kadar içerik görünüyordu; kullanıcı portföyünü
+     * görüp reklam hiç çıkmadan çıkabiliyordu. Daha kötüsü, yükleme geç biterse
+     * reklam kullanıcı içeriği kullanırken patlıyordu — AdMob'un app-open
+     * politikası bunu yasaklıyor (app-open yalnızca uygulama yüklenirken).
+     *
+     * Kapı [COLD_START_TIMEOUT_MS] dolduğunda koşulsuz açılır: süresiz
+     * bekletmek, doluluk düşükken kullanıcıyı açılış ekranında kilitler.
+     */
+    private val _coldStartGateClosed = MutableStateFlow(false)
+    val coldStartGateClosed: StateFlow<Boolean> = _coldStartGateClosed.asStateFlow()
+
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var backgroundedAt: Long? = null
 
     // Interstitial
@@ -66,6 +88,12 @@ class AdMobManager @Inject constructor(
     private var loadingInterstitial = false
 
     init {
+        // Kapı ilk kareden itibaren kapalı. Yalnızca içerik çizildikten sonra
+        // kapatılsaydı (ve öyleydi) ana ekran bir an görünüp üstüne açılış
+        // ekranı biniyordu. Reklam gösterilmeyecek her yol kapıyı açıyor;
+        // hiçbiri çalışmazsa zaman aşımı açıyor.
+        beginColdStartGate()
+
         MobileAds.initialize(context) {
             _isInitialized.value = true
             Log.d(TAG, "Mobile Ads SDK hazır")
@@ -88,11 +116,89 @@ class AdMobManager @Inject constructor(
     fun bannerAdUnitId(): String = BuildConfig.ADMOB_BANNER_ID
     fun newAdRequest(): AdRequest = AdRequest.Builder().build()
 
-    fun onBannerEvent(event: String) = analytics.logAdEvent(event, "banner")
+    fun onBannerEvent(action: String, errorMessage: String? = null) =
+        analytics.logAdEvent(action, "banner", errorMessage)
+
+    /**
+     * AdMob'un impression bazlı gelir bildirimi. Üç yüzey de buraya bağlı —
+     * gelir raporu tek olaydan (`ad_impression`) besleniyor.
+     */
+    fun onAdRevenue(value: AdValue, format: String, adUnitId: String, responseInfo: ResponseInfo?) =
+        analytics.logAdRevenue(
+            valueMicros = value.valueMicros,
+            currencyCode = value.currencyCode,
+            precisionType = value.precisionType,
+            format = format,
+            adUnitId = adUnitId,
+            source = responseInfo?.loadedAdapterResponseInfo?.adSourceName
+        )
 
     // ── App-open ─────────────────────────────────────────────────────────────
 
     fun preloadAppOpenAd() { if (adsEnabled) loadAppOpenAd() }
+
+    /**
+     * Ana içerik ilk kez ekrana geldiğinde soğuk açılış reklamını ister.
+     * Onboarding'i ve hemen ardındaki ilk varlık yönlendirmesini reklamla
+     * karşılamamak için gösterimi Application.onCreate'e değil bu ana bağlıyoruz;
+     * [showAd] false ise pencere yalnızca tüketilir, reklam açılmaz.
+     */
+    fun onMainContentReady(showAd: Boolean = true) {
+        if (coldStartHandled) return
+        coldStartHandled = true
+        // Reklam gösterilmeyecek durumlarda (Pro, onboarding devri) kapı hemen
+        // açılıyor: o kullanıcılar açılış ekranında bekletilmemeli.
+        if (!showAd || !adsEnabled) {
+            openColdStartGate()
+            return
+        }
+        requestAppOpenAd()
+    }
+
+    private fun beginColdStartGate() {
+        _coldStartGateClosed.value = true
+        mainHandler.postDelayed(coldStartTimeout, COLD_START_TIMEOUT_MS)
+    }
+
+    /** Reklam isteği kapıdan bağımsız açıldı; pencereyi baştan başlat. */
+    private fun restartColdStartWindow() {
+        mainHandler.removeCallbacks(coldStartTimeout)
+        mainHandler.postDelayed(coldStartTimeout, COLD_START_TIMEOUT_MS)
+    }
+
+    /**
+     * Kapının koşulsuz çıkışı. Reklam ekrandaysa kapı açılmaz (içerik reklamın
+     * arkasında açığa çıkardı) ama kontrol yeniden kuyruğa alınır: gösterim
+     * bayrağı bir şekilde asılı kalırsa kullanıcı açılış ekranında sonsuza
+     * kadar kilitli kalmasın.
+     */
+    private val coldStartTimeout = object : Runnable {
+        override fun run() {
+            if (!_coldStartGateClosed.value) return
+            if (isShowingFullScreenAd) {
+                mainHandler.postDelayed(this, COLD_START_TIMEOUT_MS)
+                return
+            }
+            // Bekleyen gösterim de düşürülüyor: aksi hâlde reklam kullanıcı
+            // içeriği kullanırken açılır — politika ihlali olan tam bu.
+            appOpenPendingUntil = 0L
+            openColdStartGate()
+        }
+    }
+
+    /** İçeriği serbest bırakır. Birden çok kez çağrılması güvenli. */
+    private fun openColdStartGate() {
+        _coldStartGateClosed.value = false
+    }
+
+    private fun isAppOpenPending(): Boolean = System.currentTimeMillis() < appOpenPendingUntil
+
+    private fun requestAppOpenAd() {
+        restartColdStartWindow()
+        appOpenPendingUntil = System.currentTimeMillis() + COLD_START_TIMEOUT_MS
+        showAppOpenAdIfAvailable()
+        if (appOpenAd == null) loadAppOpenAd()
+    }
 
     private fun loadAppOpenAd() {
         if (!adsEnabled || loadingAppOpen || isAppOpenAdFresh()) return
@@ -105,17 +211,23 @@ class AdMobManager @Inject constructor(
             AdRequest.Builder().build(),
             object : AppOpenAd.AppOpenAdLoadCallback() {
                 override fun onAdLoaded(ad: AppOpenAd) {
+                    ad.onPaidEventListener = OnPaidEventListener { value ->
+                        onAdRevenue(value, "app_open", ad.adUnitId, ad.responseInfo)
+                    }
                     appOpenAd = ad
                     appOpenLoadedAt = System.currentTimeMillis()
                     loadingAppOpen = false
-                    analytics.logAdEvent("ad_loaded", "app_open")
-                    if (appOpenPending) showAppOpenAdIfAvailable()
+                    analytics.logAdEvent("loaded", "app_open")
+                    if (isAppOpenPending()) showAppOpenAdIfAvailable()
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     loadingAppOpen = false
                     Log.w(TAG, "App-open yüklenemedi: ${error.message}")
-                    analytics.logAdEvent("ad_load_failed", "app_open", error.message)
+                    analytics.logAdEvent("load_failed", "app_open", error.message)
+                    // Gösterilecek reklam yok; kullanıcıyı zaman aşımı boyunca
+                    // açılış ekranında bekletmenin anlamı kalmadı.
+                    openColdStartGate()
                 }
             }
         )
@@ -131,17 +243,18 @@ class AdMobManager @Inject constructor(
         val ad = appOpenAd ?: return
 
         isShowingFullScreenAd = true
-        appOpenPending = false
+        appOpenPendingUntil = 0L
         hideBanner()
 
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdShowedFullScreenContent() =
-                analytics.logAdEvent("ad_shown", "app_open")
+                analytics.logAdEvent("did_present", "app_open")
 
             override fun onAdDismissedFullScreenContent() {
                 appOpenAd = null
                 isShowingFullScreenAd = false
-                analytics.logAdEvent("ad_closed", "app_open")
+                analytics.logAdEvent("dismissed", "app_open")
+                openColdStartGate()
                 showBanner()
                 loadAppOpenAd()
             }
@@ -150,6 +263,8 @@ class AdMobManager @Inject constructor(
                 appOpenAd = null
                 isShowingFullScreenAd = false
                 Log.w(TAG, "App-open gösterilemedi: ${error.message}")
+                analytics.logAdEvent("present_failed", "app_open", error.message)
+                openColdStartGate()
                 showBanner()
                 loadAppOpenAd()
             }
@@ -170,16 +285,19 @@ class AdMobManager @Inject constructor(
             AdRequest.Builder().build(),
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
+                    ad.onPaidEventListener = OnPaidEventListener { value ->
+                        onAdRevenue(value, "interstitial", ad.adUnitId, ad.responseInfo)
+                    }
                     interstitialAd = ad
                     loadingInterstitial = false
-                    analytics.logAdEvent("ad_loaded", "interstitial")
+                    analytics.logAdEvent("loaded", "interstitial")
                 }
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     interstitialAd = null
                     loadingInterstitial = false
                     Log.w(TAG, "Interstitial yüklenemedi: ${error.message}")
-                    analytics.logAdEvent("ad_load_failed", "interstitial", error.message)
+                    analytics.logAdEvent("load_failed", "interstitial", error.message)
                 }
             }
         )
@@ -203,12 +321,12 @@ class AdMobManager @Inject constructor(
 
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdShowedFullScreenContent() =
-                analytics.logAdEvent("ad_shown", "interstitial")
+                analytics.logAdEvent("will_present", "interstitial")
 
             override fun onAdDismissedFullScreenContent() {
                 interstitialAd = null
                 isShowingFullScreenAd = false
-                analytics.logAdEvent("ad_closed", "interstitial")
+                analytics.logAdEvent("dismissed", "interstitial")
                 showBanner()
                 loadInterstitialAd()
                 onDismissed()
@@ -218,6 +336,7 @@ class AdMobManager @Inject constructor(
                 interstitialAd = null
                 isShowingFullScreenAd = false
                 Log.w(TAG, "Interstitial gösterilemedi: ${error.message}")
+                analytics.logAdEvent("present_failed", "interstitial", error.message)
                 showBanner()
                 loadInterstitialAd()
                 onDismissed()
@@ -231,6 +350,8 @@ class AdMobManager @Inject constructor(
         if (isPro) {
             appOpenAd = null
             interstitialAd = null
+            // Pro kullanıcı reklam beklemez.
+            openColdStartGate()
             hideBanner()
         } else {
             showBanner()
@@ -247,11 +368,7 @@ class AdMobManager @Inject constructor(
         // Kısa bir uygulama değişiminden (bildirim çekmecesi, hızlı kopyala)
         // dönüşte reklam göstermiyoruz — Google'ın önerdiği davranış.
         val away = backgroundedAt?.let { System.currentTimeMillis() - it }
-        if (away != null && away >= MIN_BACKGROUND_MS) {
-            appOpenPending = true
-            showAppOpenAdIfAvailable()
-            if (appOpenAd == null) loadAppOpenAd()
-        }
+        if (away != null && away >= MIN_BACKGROUND_MS) requestAppOpenAd()
         backgroundedAt = null
     }
 
@@ -260,7 +377,10 @@ class AdMobManager @Inject constructor(
     }
 
     override fun onActivityStopped(activity: Activity) {
-        backgroundedAt = System.currentTimeMillis()
+        // Tam ekran reklam kendi Activity'sini açarken de burası tetikleniyor;
+        // uzun izlenen bir reklamı "arka plandan dönüş" sayıp üstüne ikinci bir
+        // reklam açmayalım.
+        if (!isShowingFullScreenAd) backgroundedAt = System.currentTimeMillis()
     }
 
     override fun onActivityDestroyed(activity: Activity) {
@@ -275,5 +395,11 @@ class AdMobManager @Inject constructor(
         const val TAG = "AdMobManager"
         const val APP_OPEN_TTL_MS = 4 * 60 * 60 * 1000L
         const val MIN_BACKGROUND_MS = 30_000L
+        /**
+         * ponytail: sabit; Remote Config'e taşınabilir ama önce ölçülmeli.
+         * Hem kapının hem bekleyen gösterimin ömrü — reklam bu süre içinde
+         * gelmezse kullanıcı serbest bırakılıyor ve gösterim düşürülüyor.
+         */
+        const val COLD_START_TIMEOUT_MS = 4_000L
     }
 }

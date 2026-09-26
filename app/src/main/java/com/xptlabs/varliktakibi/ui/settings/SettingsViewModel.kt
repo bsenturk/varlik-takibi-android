@@ -23,7 +23,9 @@ data class SettingsUiState(
     val currency: Currency = Currency.TRY,
     val darkMode: DarkModePreference = DarkModePreference.SYSTEM,
     val notificationsEnabled: Boolean = false,
-    val versionLabel: String = ""
+    val versionLabel: String = "",
+    /** Yalnızca debug: Pro zorlaması; null = gerçek abonelik geçerli. */
+    val debugProOverride: Boolean? = null
 )
 
 @HiltViewModel
@@ -40,16 +42,33 @@ class SettingsViewModel @Inject constructor(
         purchaseManager.isPro,
         prefs.selectedCurrency,
         prefs.darkMode,
-        notificationsEnabled
-    ) { isPro, currency, darkMode, notifications ->
+        notificationsEnabled,
+        prefs.debugProOverride
+    ) { isPro, currency, darkMode, notifications, debugOverride ->
         SettingsUiState(
             isPro = isPro,
             currency = currency,
             darkMode = darkMode,
             notificationsEnabled = notifications,
-            versionLabel = "Sürüm ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
+            versionLabel = "Sürüm ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+            debugProOverride = debugOverride
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+
+    /**
+     * Debug düğmesi: gerçek abonelik → Pro zorla → Ücretsiz zorla → gerçek…
+     * Zorlama kalıcı; soğuk açılış kapısı ancak uygulama yeniden başlatılarak
+     * test edilebiliyor.
+     */
+    fun cycleDebugProOverride() {
+        purchaseManager.setDebugProOverride(
+            when (uiState.value.debugProOverride) {
+                null -> true
+                true -> false
+                false -> null
+            }
+        )
+    }
 
     /** Ekran her öne geldiğinde: izin sistem ayarlarından değişmiş olabilir. */
     fun refreshNotificationStatus() {
@@ -59,8 +78,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun setCurrency(currency: Currency) = viewModelScope.launch {
+        val previous = uiState.value.currency
+        if (previous == currency) return@launch
         prefs.setSelectedCurrency(currency)
-        analytics.logCurrencyChanged(currency.code)
+        analytics.logCurrencyChanged(previous.code, currency.code)
     }
 
     fun setDarkMode(preference: DarkModePreference) = viewModelScope.launch {

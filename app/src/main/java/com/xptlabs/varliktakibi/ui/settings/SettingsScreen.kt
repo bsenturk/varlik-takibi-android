@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Description
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.xptlabs.varliktakibi.BuildConfig
 import com.xptlabs.varliktakibi.core.ext.toColor
 import com.xptlabs.varliktakibi.core.model.Currency
 import com.xptlabs.varliktakibi.data.prefs.DarkModePreference
@@ -146,6 +148,24 @@ fun SettingsScreen(
                         )
                     }
                 )
+            }
+        }
+
+        if (BuildConfig.DEBUG) {
+            item {
+                Section("DEBUG") {
+                    SettingsRow(
+                        icon = Icons.Filled.BugReport,
+                        tintHex = if (state.debugProOverride == null) "#8E8E93" else "#AF52DE",
+                        title = "Pro zorlaması",
+                        value = when (state.debugProOverride) {
+                            null -> "Kapalı (gerçek abonelik)"
+                            true -> "Pro ✅"
+                            false -> "Ücretsiz"
+                        },
+                        onClick = viewModel::cycleDebugProOverride
+                    )
+                }
             }
         }
 

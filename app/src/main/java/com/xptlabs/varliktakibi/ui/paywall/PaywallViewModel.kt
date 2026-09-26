@@ -103,9 +103,19 @@ class PaywallViewModel @Inject constructor(
         viewModelScope.launch { purchaseManager.loadOfferings() }
     }
 
-    fun onShown(context: PaywallContext) = analytics.logPaywallShown(context.key)
+    /** Paywall'ın ekranda kaldığı süreyi ölçmek için — refleks kapatmayı ayırır. */
+    private var shownAt = 0L
 
-    fun onDismissed(context: PaywallContext) = analytics.logPaywallDismissed(context.key)
+    fun onShown(context: PaywallContext) {
+        shownAt = System.currentTimeMillis()
+        analytics.logPaywallShown(context.key)
+    }
+
+    fun onDismissed(context: PaywallContext) {
+        val seconds = if (shownAt == 0L) 0
+        else ((System.currentTimeMillis() - shownAt) / 1000L).toInt()
+        analytics.logPaywallDismissed(context.key, seconds)
+    }
 
     fun selectPlan(plan: PlanOption) {
         selectedPackageId.value = plan.pkg.identifier
@@ -116,12 +126,15 @@ class PaywallViewModel @Inject constructor(
         val plan = uiState.value.selectedPlan ?: return
         analytics.logPaywallCtaTapped(plan.label, plan.hasTrial)
         viewModelScope.launch {
-            val success = purchaseManager.purchase(activity, plan.pkg)
-            if (success) {
-                analytics.logSubscriptionPurchased(plan.label, plan.hasTrial)
-                succeeded.value = true
-            } else {
-                analytics.logSubscriptionPurchaseFailed(plan.label)
+            when (val outcome = purchaseManager.purchase(activity, plan.pkg)) {
+                is PurchaseManager.PurchaseOutcome.Success -> {
+                    analytics.logSubscriptionPurchased(plan.label, plan.hasTrial)
+                    succeeded.value = true
+                }
+                is PurchaseManager.PurchaseOutcome.Cancelled ->
+                    analytics.logSubscriptionPurchaseFailed(plan.label, "cancelled", null)
+                is PurchaseManager.PurchaseOutcome.Failed ->
+                    analytics.logSubscriptionPurchaseFailed(plan.label, "error", outcome.errorCode)
             }
         }
     }

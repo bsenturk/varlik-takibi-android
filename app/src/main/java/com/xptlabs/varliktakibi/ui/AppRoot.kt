@@ -3,6 +3,7 @@ package com.xptlabs.varliktakibi.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -22,7 +23,9 @@ import com.xptlabs.varliktakibi.ads.AdMobManager
 import com.xptlabs.varliktakibi.ads.BannerAd
 import com.xptlabs.varliktakibi.billing.PurchaseManager
 import com.xptlabs.varliktakibi.ui.addasset.AddAssetScreen
+import com.xptlabs.varliktakibi.ui.addasset.AddAssetViewModel
 import com.xptlabs.varliktakibi.ui.analysis.AnalysisScreen
+import com.xptlabs.varliktakibi.ui.common.ColdStartSplash
 import com.xptlabs.varliktakibi.ui.main.MainScaffold
 import com.xptlabs.varliktakibi.ui.main.MainTab
 import com.xptlabs.varliktakibi.ui.onboarding.OnboardingScreen
@@ -51,7 +54,11 @@ fun AppRoot(
         // hemen değiştirmek titremeye yol açıyor.
         null -> Box(modifier = Modifier.fillMaxSize())
 
-        false -> OnboardingScreen(onComplete = viewModel::onOnboardingComplete)
+        false -> {
+            // Onboarding reklamla karşılanmıyor; kapıyı hemen aç.
+            LaunchedEffect(Unit) { adMobManager.onMainContentReady(showAd = false) }
+            OnboardingScreen(onComplete = viewModel::onOnboardingComplete)
+        }
 
         true -> MainContent(
             adMobManager = adMobManager,
@@ -69,6 +76,7 @@ private fun MainContent(
 ) {
     val activity = LocalActivity.current
     val bannerVisible by adMobManager.bannerVisible.collectAsStateWithLifecycle()
+    val coldStartGateClosed by adMobManager.coldStartGateClosed.collectAsStateWithLifecycle()
     val isPro by purchaseManager.isPro.collectAsStateWithLifecycle()
 
     var selectedTab by remember { mutableStateOf(MainTab.PORTFOLIO) }
@@ -79,10 +87,18 @@ private fun MainContent(
     // üzerinde LaunchedEffect kurmak ilk kompozisyonda da tetikleniyor ve
     // onboarding paywall bayrağını daha ekran açılmadan tüketiyordu.
     var addAssetClosed by remember { mutableStateOf<Boolean?>(null) }
+    var addAssetSource by remember { mutableStateOf(AddAssetViewModel.SOURCE_MANUAL) }
 
-    // Onboarding devri: varlık ekleme akışını bir kez otomatik aç.
+    // Onboarding devri: varlık ekleme akışını bir kez otomatik aç. Bu devirde
+    // soğuk açılış reklamı gösterilmiyor — yeni kullanıcıyı reklamla karşılamak
+    // yerine ilk varlığını eklemeye yönlendiriyoruz.
     LaunchedEffect(Unit) {
-        if (viewModel.consumePendingFirstAssetAdd()) showAddAsset = true
+        val firstAssetAdd = viewModel.consumePendingFirstAssetAdd()
+        if (firstAssetAdd) {
+            addAssetSource = AddAssetViewModel.SOURCE_ONBOARDING
+            showAddAsset = true
+        }
+        adMobManager.onMainContentReady(showAd = !firstAssetAdd)
     }
 
     LaunchedEffect(selectedTab) { viewModel.logScreen(selectedTab.name) }
@@ -94,6 +110,7 @@ private fun MainContent(
         onTabSelected = { selectedTab = it },
         onAddAsset = {
             adMobManager.loadInterstitialAd()
+            addAssetSource = AddAssetViewModel.SOURCE_MANUAL
             showAddAsset = true
         },
         showBanner = bannerVisible && !isPro,
@@ -102,7 +119,8 @@ private fun MainContent(
         when (selectedTab) {
             MainTab.PORTFOLIO -> DashboardScreen(
                 onEditAsset = { editingAssetId = it },
-                onPortfolioLimitReached = { paywallContext = PaywallContext.PORTFOLIO_LIMIT }
+                onPortfolioLimitReached = { paywallContext = PaywallContext.PORTFOLIO_LIMIT },
+                onLockedContent = { paywallContext = PaywallContext.FUND }
             )
 
             MainTab.ANALYSIS -> AnalysisScreen()
@@ -121,6 +139,7 @@ private fun MainContent(
         exit = slideOutVertically { it } + fadeOut()
     ) {
         AddAssetScreen(
+            source = addAssetSource,
             onClose = {
                 showAddAsset = false
                 addAssetClosed = false
@@ -157,6 +176,17 @@ private fun MainContent(
     paywallContext?.let { context ->
         PaywallScreen(context = context, onClose = { paywallContext = null })
         BackHandler { paywallContext = null }
+    }
+
+    // Soğuk açılışta app-open reklamı gösterilene (ya da zaman aşımına) kadar
+    // içeriği örter: kullanıcının reklamı hiç görmeden portföyü görüp çıkmasını
+    // ve reklamın içerik kullanılırken patlamasını engeller.
+    AnimatedVisibility(
+        visible = coldStartGateClosed,
+        enter = fadeIn(),
+        exit = fadeOut(animationSpec = tween(durationMillis = 250))
+    ) {
+        ColdStartSplash()
     }
 
     // Ekleme akışında geri tuşu adım adım geri gitsin; AddAssetScreen kendi

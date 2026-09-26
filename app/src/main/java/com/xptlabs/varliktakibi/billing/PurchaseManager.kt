@@ -10,6 +10,7 @@ import com.revenuecat.purchases.Package
 import com.revenuecat.purchases.Purchases
 import com.revenuecat.purchases.PurchaseParams
 import com.revenuecat.purchases.PurchasesConfiguration
+import com.revenuecat.purchases.PurchasesTransactionException
 import com.revenuecat.purchases.awaitCustomerInfo
 import com.revenuecat.purchases.awaitOfferings
 import com.revenuecat.purchases.awaitPurchase
@@ -25,6 +26,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -60,6 +62,13 @@ class PurchaseManager @Inject constructor(
 
     private var configured = false
 
+    /**
+     * Debug build'de Pro durumunu sabitler; null ise gerçek abonelik geçerli.
+     * RevenueCat'in `updatedCustomerInfoListener`'ı ve her açılıştaki
+     * `refreshCustomerInfo()` aksi hâlde zorlamayı saniyeler içinde eziyordu.
+     */
+    private var debugProOverride: Boolean? = null
+
     fun configure() {
         val apiKey = BuildConfig.REVENUECAT_API_KEY
         if (apiKey.isBlank()) {
@@ -74,12 +83,34 @@ class PurchaseManager @Inject constructor(
         Purchases.configure(PurchasesConfiguration.Builder(context, apiKey).build())
         configured = true
 
-        Purchases.sharedInstance.updatedCustomerInfoListener =
-            UpdatedCustomerInfoListener { info -> applyEntitlement(info) }
-
         scope.launch {
+            // Sıra önemli: RevenueCat kendi önbelleğinden anında bir
+            // CustomerInfo yollayabiliyor. Dinleyiciyi ya da yenilemeyi önce
+            // bağlarsak diskteki değerler okunmadan `_isPro` yazılıyor ve debug
+            // zorlaması saniyelerce etkisiz kalıyordu.
+            if (BuildConfig.DEBUG) {
+                debugProOverride = prefs.debugProOverride.first()
+            }
+            // RevenueCat cevap verene kadar kalıcı bayrak geçerli: aksi hâlde
+            // Pro kullanıcı her açılışta bir an ücretsiz sayılıp reklam
+            // yüklüyordu.
+            _isPro.value = debugProOverride ?: prefs.isPro.first()
+
+            Purchases.sharedInstance.updatedCustomerInfoListener =
+                UpdatedCustomerInfoListener { info -> applyEntitlement(info) }
+
             refreshCustomerInfo()
             loadOfferings()
+        }
+
+        // Zorlama çalışırken de değiştirilebiliyor; sonraki değişimler buradan.
+        if (BuildConfig.DEBUG) {
+            scope.launch {
+                prefs.debugProOverride.collect { override ->
+                    debugProOverride = override
+                    if (override != null) _isPro.value = override
+                }
+            }
         }
     }
 
@@ -97,18 +128,33 @@ class PurchaseManager @Inject constructor(
             .onFailure { Log.e(TAG, "CustomerInfo alınamadı: ${it.message}") }
     }
 
-    /** @return abonelik aktifleştiyse true. Kullanıcı iptal ederse false. */
-    suspend fun purchase(activity: Activity, pkg: Package): Boolean {
-        if (!configured) return false
+    /**
+     * Satın alma sonucu. Düz `Boolean` döndürüldüğünde kullanıcı iptali ile
+     * gerçek store hatası aynı sayıya düşüyor ve huninin son adımı okunamıyordu.
+     */
+    sealed interface PurchaseOutcome {
+        data object Success : PurchaseOutcome
+        /** Kullanıcı Play satın alma sayfasını kapattı. */
+        data object Cancelled : PurchaseOutcome
+        data class Failed(val errorCode: Int?) : PurchaseOutcome
+    }
+
+    suspend fun purchase(activity: Activity, pkg: Package): PurchaseOutcome {
+        if (!configured) return PurchaseOutcome.Failed(null)
         _purchaseInProgress.value = true
         return try {
             val params = PurchaseParams.Builder(activity, pkg).build()
             val result = Purchases.sharedInstance.awaitPurchase(params)
             applyEntitlement(result.customerInfo)
-            isSubscribed(result.customerInfo)
+            if (isSubscribed(result.customerInfo)) PurchaseOutcome.Success
+            else PurchaseOutcome.Failed(null)
+        } catch (e: PurchasesTransactionException) {
+            Log.e(TAG, "Satın alma başarısız: ${e.message}")
+            if (e.userCancelled) PurchaseOutcome.Cancelled
+            else PurchaseOutcome.Failed(e.code.code)
         } catch (e: Exception) {
             Log.e(TAG, "Satın alma başarısız: ${e.message}")
-            false
+            PurchaseOutcome.Failed(null)
         } finally {
             _purchaseInProgress.value = false
         }
@@ -133,7 +179,21 @@ class PurchaseManager @Inject constructor(
         info.entitlements[ENTITLEMENT_ID]?.isActive == true ||
             info.entitlements.active.isNotEmpty()
 
+    /** Yalnızca debug: `null` zorlamayı kaldırır, gerçek aboneliğe döner. */
+    fun setDebugProOverride(value: Boolean?) {
+        if (!BuildConfig.DEBUG) return
+        scope.launch {
+            prefs.setDebugProOverride(value)
+            // Zorlama kalkınca gerçek durum yeniden okunsun.
+            if (value == null) refreshCustomerInfo()
+        }
+    }
+
     private fun applyEntitlement(info: CustomerInfo) {
+        debugProOverride?.let {
+            Log.d(TAG, "Debug Pro zorlaması açık ($it); entitlement yok sayıldı")
+            return
+        }
         val pro = isSubscribed(info)
         if (_isPro.value != pro) Log.d(TAG, "Pro entitlement → $pro")
         _isPro.value = pro

@@ -14,7 +14,9 @@ import com.xptlabs.varliktakibi.data.local.entity.category
 import com.xptlabs.varliktakibi.data.local.entity.totalValue
 import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.data.prefs.AppPreferences
+import com.xptlabs.varliktakibi.billing.PurchaseManager
 import com.xptlabs.varliktakibi.data.repo.PortfolioRepository
+import com.xptlabs.varliktakibi.data.repo.ProLock
 import com.xptlabs.varliktakibi.market.MarketDataStore
 import com.xptlabs.varliktakibi.ui.common.ChartPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -60,7 +62,10 @@ data class AnalysisUiState(
     val distribution: List<DistributionSlice> = emptyList(),
     val gainers: List<MoverItem> = emptyList(),
     val losers: List<MoverItem> = emptyList(),
-    val isEmpty: Boolean = true
+    val isEmpty: Boolean = true,
+    val lockedPortfolioIds: Set<String> = emptySet(),
+    /** Bkz. [com.xptlabs.varliktakibi.ui.portfolio.DashboardUiState.isLoaded]. */
+    val isLoaded: Boolean = false
 ) {
     /** Seçili aralıktaki toplam değişim yüzdesi — grafiğin ilk ve son noktası. */
     val rangeChangePercent: Double
@@ -78,8 +83,16 @@ class AnalysisViewModel @Inject constructor(
     private val snapshotDao: SnapshotDao,
     private val historyDao: HistoryDao,
     private val prefs: AppPreferences,
-    private val market: MarketDataStore
+    private val market: MarketDataStore,
+    private val purchaseManager: PurchaseManager
 ) : ViewModel() {
+
+    private data class Prefs(
+        val selectedId: String?,
+        val currency: Currency,
+        val maskedIds: Set<String>,
+        val isPro: Boolean
+    )
 
     private val range = MutableStateFlow(TimeRange.MONTH)
 
@@ -90,24 +103,34 @@ class AnalysisViewModel @Inject constructor(
         repository.observePortfolios(),
         repository.observeAssets(),
         snapshotDao.observeAll(),
-        combine(prefs.selectedPortfolioId, prefs.selectedCurrency, prefs.maskedPortfolioIds) {
-            id, currency, masked -> Triple(id, currency, masked)
-        },
+        combine(
+            prefs.selectedPortfolioId,
+            prefs.selectedCurrency,
+            prefs.maskedPortfolioIds,
+            purchaseManager.isPro
+        ) { id, currency, masked, isPro -> Prefs(id, currency, masked, isPro) },
         combine(range, previousCloses) { r, closes -> r to closes }
-    ) { portfolios, assets, snapshots, (selectedId, currency, masked), (selectedRange, closes) ->
-        val selected = portfolios.firstOrNull { it.id == selectedId }
+    ) { portfolios, assets, snapshots, prefsSnapshot, (selectedRange, closes) ->
+        val (selectedId, currency, masked, isPro) = prefsSnapshot
+        val lockedIds = ProLock.lockedPortfolioIds(portfolios, isPro)
+
+        val selected = portfolios.firstOrNull { it.id == selectedId && it.id !in lockedIds }
             ?: portfolios.firstOrNull { it.isGeneral }
             ?: portfolios.firstOrNull()
 
+        // Analiz baştan sona tutar ve oran gösteriyor; kilitli varlık hiçbirine
+        // girmiyor.
+        val visible = ProLock.unlocked(assets, portfolios, isPro)
         val scoped = when {
             selected == null -> emptyList()
-            selected.isGeneral -> assets
-            else -> assets.filter { it.portfolioId == selected.id }
+            selected.isGeneral -> visible
+            else -> visible.filter { it.portfolioId == selected.id }
         }
 
         val relevantPortfolioIds = when {
             selected == null -> emptySet()
-            selected.isGeneral -> portfolios.filter { !it.isGeneral }.map { it.id }.toSet()
+            selected.isGeneral ->
+                portfolios.filter { !it.isGeneral && it.id !in lockedIds }.map { it.id }.toSet()
             else -> setOf(selected.id)
         }
 
@@ -125,7 +148,9 @@ class AnalysisViewModel @Inject constructor(
             distribution = distribution(scoped),
             gainers = movers.first,
             losers = movers.second,
-            isEmpty = scoped.isEmpty()
+            isEmpty = scoped.isEmpty(),
+            lockedPortfolioIds = lockedIds,
+            isLoaded = true
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AnalysisUiState())
 
