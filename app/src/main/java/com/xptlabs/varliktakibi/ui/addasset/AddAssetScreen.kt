@@ -12,6 +12,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.UnfoldMore
 import androidx.compose.material.icons.outlined.Info
@@ -271,6 +272,33 @@ private fun InstrumentList(
                 .fillMaxWidth()
                 .padding(horizontal = 18.dp, vertical = 12.dp)
         )
+
+        // Listede TEFAS'ın tamamı yok, yalnızca daha önce girilmiş fonlar;
+        // kullanıcı bulamayınca "desteklenmiyor" sanıyordu. Canlı arama yalnızca
+        // fonlarda var, hisse/kripto için aynı sözü vermek yanlış olurdu.
+        if (category == AssetCategory.FUND) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 18.dp, end = 18.dp, bottom = 12.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AppColors.pro.copy(alpha = 0.08f))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    Icons.Filled.Info,
+                    contentDescription = null,
+                    tint = AppColors.pro,
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    "Listede tüm fonlar yok. Aradığın fonu göremiyorsan kodunu ya da adını yukarıya yaz — TEFAS'tan getirelim.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
 
         if (instruments.isEmpty()) {
             EmptyInstruments(category = category, isSearching = isSearching, query = query)
