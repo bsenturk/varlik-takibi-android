@@ -10,6 +10,8 @@ import com.xptlabs.varliktakibi.data.prefs.AppPreferences
 import com.xptlabs.varliktakibi.data.repo.AssetEditor
 import com.xptlabs.varliktakibi.data.repo.PortfolioRepository
 import com.xptlabs.varliktakibi.data.repo.ProLock
+import com.xptlabs.varliktakibi.data.remote.ChartRange
+import com.xptlabs.varliktakibi.data.remote.PriceSeries
 import com.xptlabs.varliktakibi.market.Instrument
 import com.xptlabs.varliktakibi.market.MarketDataStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -282,6 +284,11 @@ class AddAssetViewModel @Inject constructor(
             }
         }
     }
+
+    suspend fun priceSeries(symbol: String, range: ChartRange): PriceSeries =
+        market.priceSeries(symbol, range)
+
+    fun dayChangePercent(instrument: Instrument): Double? = market.changePercent(instrument.symbol)
 
     /** Kullanıcı bir şey girmeden önce göstereceğimiz güncel piyasa fiyatı. */
     fun marketPrice(instrument: Instrument): Double =

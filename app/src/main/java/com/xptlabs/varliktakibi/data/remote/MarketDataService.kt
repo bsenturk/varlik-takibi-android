@@ -84,6 +84,23 @@ class MarketDataService @Inject constructor(
         json.decodeFromString<FundSearchResponse>(response.bodyAsText()).data
     }
 
+    /**
+     * Enstrümanın geçmiş fiyat serisi (`price-chart` Edge Function'ı: Yahoo /
+     * CoinGecko / TEFAS proxy'si, 30 dk önbellekli). Altın ve dövizin geçmiş
+     * kaynağı yok; onlarda hata döner.
+     */
+    suspend fun fetchPriceSeries(symbol: String, range: ChartRange): PriceSeries =
+        withContext(Dispatchers.IO) {
+            val response = client.functions.invoke(
+                function = "price-chart",
+                body = PriceChartRequest(symbol = symbol, range = range.key)
+            )
+            json.decodeFromString<PriceSeries>(response.bodyAsText())
+        }
+
+    @Serializable
+    private data class PriceChartRequest(val symbol: String, val range: String)
+
     @Serializable
     private data class FundSearchRequest(val q: String)
 

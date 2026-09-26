@@ -7,6 +7,8 @@ import com.xptlabs.varliktakibi.core.model.AssetType
 import com.xptlabs.varliktakibi.data.local.entity.AssetEntity
 import com.xptlabs.varliktakibi.data.local.entity.assetType
 import com.xptlabs.varliktakibi.data.remote.AssetPrice
+import com.xptlabs.varliktakibi.data.remote.ChartRange
+import com.xptlabs.varliktakibi.data.remote.PriceSeries
 import com.xptlabs.varliktakibi.data.remote.MarketDataService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -199,6 +201,10 @@ class MarketDataStore @Inject constructor(
             "crypto" -> rawName?.takeIf { it.isNotBlank() }?.let(::cryptoDisplayName) ?: symbol
             else -> rawName ?: symbol
         }
+
+    /** Enstrüman detayındaki fiyat grafiği için; hata yukarı fırlar. */
+    suspend fun priceSeries(symbol: String, range: ChartRange): PriceSeries =
+        service.fetchPriceSeries(symbol, range)
 
     // ── TEFAS araması ────────────────────────────────────────────────────────
 

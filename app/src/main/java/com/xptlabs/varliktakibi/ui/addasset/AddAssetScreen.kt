@@ -157,6 +157,8 @@ fun AddAssetScreen(
                 instrument = step.instrument,
                 marketPrice = viewModel.marketPrice(step.instrument),
                 state = state,
+                dayChangePercent = viewModel.dayChangePercent(step.instrument),
+                loadSeries = viewModel::priceSeries,
                 onSelectPortfolio = viewModel::selectPortfolio,
                 onSave = { amount, price, location, name ->
                     viewModel.save(step.instrument, amount, price, location, name)
@@ -364,6 +366,8 @@ private fun AmountEntry(
     instrument: Instrument,
     marketPrice: Double,
     state: AddAssetUiState,
+    dayChangePercent: Double?,
+    loadSeries: suspend (String, com.xptlabs.varliktakibi.data.remote.ChartRange) -> com.xptlabs.varliktakibi.data.remote.PriceSeries,
     onSelectPortfolio: (com.xptlabs.varliktakibi.data.local.entity.PortfolioEntity) -> Unit,
     onSave: (amount: String, purchasePrice: String, location: String, name: String) -> Unit
 ) {
@@ -413,6 +417,19 @@ private fun AmountEntry(
                     fontWeight = FontWeight.Bold,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            // Enstrüman detayı: güncel fiyat + geçmiş grafik. Yalnızca dinamik
+            // kategorilerde — altın/dövizin geçmiş kaynağı yok.
+            if (instrument.category.isDynamic) {
+                InstrumentChartCard(
+                    symbol = instrument.symbol,
+                    category = instrument.category,
+                    tint = instrument.type.tintHex.toColor(),
+                    currentPrice = marketPrice,
+                    dayChangePercent = dayChangePercent,
+                    loadSeries = loadSeries
                 )
             }
 
