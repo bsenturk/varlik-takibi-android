@@ -311,6 +311,7 @@ private fun InstrumentRow(instrument: Instrument, onClick: () -> Unit) {
             icon = instrument.type.icon,
             tintHex = instrument.type.tintHex,
             flag = instrument.flag,
+            logoUrl = instrument.logoUrl,
             size = 38.dp
         )
         Text(
@@ -409,6 +410,7 @@ private fun AmountEntry(
                     icon = instrument.type.icon,
                     tintHex = instrument.type.tintHex,
                     flag = instrument.flag,
+                    logoUrl = instrument.logoUrl,
                     size = 34.dp
                 )
                 Text(

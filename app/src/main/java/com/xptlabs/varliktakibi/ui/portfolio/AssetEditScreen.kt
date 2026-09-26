@@ -120,7 +120,8 @@ fun AssetEditScreen(
                 AssetIconTile(
                     icon = asset.assetType.icon,
                     tintHex = asset.assetType.tintHex,
-                    flag = asset.assetType.flag
+                    flag = asset.assetType.flag,
+                    logoUrl = state.logoUrl
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = asset.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 2)
@@ -253,6 +254,7 @@ fun AssetEditScreen(
             currentPrice = currentPrice ?: asset.costBasis,
             isTRY = state.isTRY,
             valuesMasked = state.valuesMasked,
+            logoUrl = state.logoUrl,
             onClose = { showingHistory = false }
         )
         BackHandler { showingHistory = false }

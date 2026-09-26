@@ -40,6 +40,9 @@ play-services-ads = "24.0.0"
 # Play In-App Review
 play-review = "2.0.2"
 
+# Uzak görsel (kripto/hisse logoları)
+coil = "3.1.0"
+
 # Core Splashscreen
 
 
@@ -118,6 +121,8 @@ firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging
 
 # AdMob
 play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "play-services-ads" }
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 play-review-ktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "play-review" }
 
 [bundles]

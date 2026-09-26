@@ -196,7 +196,8 @@ class DashboardViewModel @Inject constructor(
                     flag = type.flag,
                     assetId = asset.id,
                     isLocked = ProLock.isLocked(asset, lockedIds, isPro),
-                    location = asset.location.ifEmpty { null }
+                    location = asset.location.ifEmpty { null },
+                    logoUrl = market.logoUrl(asset.symbol)
                 )
             }
 

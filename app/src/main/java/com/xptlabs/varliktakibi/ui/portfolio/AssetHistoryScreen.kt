@@ -69,6 +69,7 @@ fun AssetHistoryScreen(
     currentPrice: Double,
     isTRY: Boolean,
     valuesMasked: Boolean,
+    logoUrl: String?,
     onClose: () -> Unit
 ) {
     fun money(value: Double) = if (valuesMasked) TrFormat.MASK else TrFormat.money(value)
@@ -100,6 +101,7 @@ fun AssetHistoryScreen(
 
             SummaryCard(
                 asset = asset,
+                logoUrl = logoUrl,
                 currentValue = money(asset.amount * currentPrice),
                 // Elle girilende fiyat = değer; aynı sayıyı iki kez yazmayalım.
                 currentPrice = if (isTRY || isManual) null else TrFormat.money(currentPrice),
@@ -172,6 +174,7 @@ fun AssetHistoryScreen(
 @Composable
 private fun SummaryCard(
     asset: AssetEntity,
+    logoUrl: String?,
     currentValue: String,
     currentPrice: String?,
     firstAdded: String
@@ -189,7 +192,7 @@ private fun SummaryCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            AssetIconTile(icon = type.icon, tintHex = type.tintHex, flag = type.flag)
+            AssetIconTile(icon = type.icon, tintHex = type.tintHex, flag = type.flag, logoUrl = logoUrl)
             Column {
                 Text(asset.name, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                 Text(

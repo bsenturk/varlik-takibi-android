@@ -2,6 +2,15 @@ package com.xptlabs.varliktakibi.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import com.xptlabs.varliktakibi.ui.theme.AppColors
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -46,16 +55,37 @@ fun AssetIconTile(
     tintHex: String,
     flag: String? = null,
     size: Dp = 44.dp,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /**
+     * Enstrümanın kendi logosu. null ise — ya da indirilemezse — kategori
+     * ikonuna düşülür: her kripto satırında aynı ₿ durmasın diye.
+     */
+    logoUrl: String? = null
 ) {
     val tint = tintHex.toColor()
+    var logoLoaded by remember(logoUrl) { mutableStateOf(false) }
     Box(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(12.dp))
-            .background(tint.copy(alpha = 0.16f)),
+            // Logolar kendi renklerini taşıyor: turuncu kripto zemini Cardano'nun
+            // mavisiyle çakışıyordu. Logo varken nötr zemin.
+            .background(if (logoUrl != null) AppColors.subtleFill else tint.copy(alpha = 0.16f)),
         contentAlignment = Alignment.Center
     ) {
-        AssetGlyph(icon = icon, flag = flag, color = tint, size = size * 0.42f)
+        // Yüklenirken / başarısızken kategori ikonu: kutu bir an kimliksiz kalmasın.
+        if (!logoLoaded) AssetGlyph(icon = icon, flag = flag, color = tint, size = size * 0.42f)
+        if (logoUrl != null) {
+            AsyncImage(
+                model = logoUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                onSuccess = { logoLoaded = true },
+                onError = { logoLoaded = false },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(size * 0.18f)
+            )
+        }
     }
 }

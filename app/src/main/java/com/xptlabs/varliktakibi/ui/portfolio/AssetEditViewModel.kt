@@ -30,6 +30,7 @@ data class AssetEditUiState(
     val transactions: List<TransactionHistoryEntity> = emptyList(),
     /** Varlığın portföyünün gözü kapalıysa tutarlar maskelenir. */
     val valuesMasked: Boolean = false,
+    val logoUrl: String? = null,
     val errorMessage: String? = null,
     val finished: Boolean = false
 ) {
@@ -61,6 +62,7 @@ class AssetEditViewModel @Inject constructor(
             it.copy(
                 asset = asset,
                 marketPrice = asset?.let { a -> market.priceOf(a) },
+                logoUrl = asset?.let { a -> market.logoUrl(a.symbol) },
                 transactions = asset?.let { a -> history.transactions(a).asReversed() }.orEmpty(),
                 valuesMasked = asset != null && asset.portfolioId in prefs.maskedPortfolioIds.first()
             )

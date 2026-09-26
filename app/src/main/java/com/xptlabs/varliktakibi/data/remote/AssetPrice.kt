@@ -18,5 +18,7 @@ data class AssetPrice(
     val price: Double,
     @SerialName("change_percent") val changePercent: Double? = null,
     val source: String? = null,
-    @SerialName("updated_at") val updatedAt: String
+    @SerialName("updated_at") val updatedAt: String,
+    /** Enstrümanın logosu (kripto/hisse); Storage'daki kopya. Yoksa null. */
+    @SerialName("logo_url") val logoUrl: String? = null
 )

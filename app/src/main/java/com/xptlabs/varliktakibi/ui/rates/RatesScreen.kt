@@ -171,6 +171,7 @@ private fun RateCard(instrument: Instrument) {
             icon = instrument.type.icon,
             tintHex = instrument.type.tintHex,
             flag = instrument.flag,
+            logoUrl = instrument.logoUrl,
             size = 40.dp
         )
         Text(

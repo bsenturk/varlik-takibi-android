@@ -36,7 +36,8 @@ data class Instrument(
     /** Sabit tür (altın/döviz) ise dolu; dinamik enstrümanlarda jenerik tür. */
     val type: AssetType,
     val unit: String,
-    val flag: String? = null
+    val flag: String? = null,
+    val logoUrl: String? = null
 )
 
 /**
@@ -112,6 +113,13 @@ class MarketDataStore @Inject constructor(
         _prices.value.firstOrNull { it.symbol == symbol && it.currency == "TRY" }?.changePercent
             ?: _prices.value.firstOrNull { it.symbol == symbol }?.changePercent
 
+    /**
+     * Enstrümanın kendi logosu; aynı sembolün bütün satırları aynı logoyu
+     * taşıyor. null normal (altın, döviz, fon, logosu bulunamayan hisse).
+     */
+    fun logoUrl(symbol: String): String? =
+        _prices.value.firstOrNull { it.symbol == symbol && it.logoUrl != null }?.logoUrl
+
     fun lastUpdateOf(symbol: String): Instant? =
         _prices.value.firstOrNull { it.symbol == symbol }?.updatedAt?.parseTimestampOrNull()
 
@@ -152,7 +160,8 @@ class MarketDataStore @Inject constructor(
                         .changePercent,
                     category = category,
                     type = genericType,
-                    unit = genericType.unit
+                    unit = genericType.unit,
+                    logoUrl = rows.firstNotNullOfOrNull { it.logoUrl }
                 )
             }
             .sortedBy { it.name.lowercase() }

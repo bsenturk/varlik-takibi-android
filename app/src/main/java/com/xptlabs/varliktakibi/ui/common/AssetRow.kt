@@ -54,7 +54,8 @@ data class AssetRowItem(
      * Tutulduğu yer. Alt başlığa eklenmiyor — sol sütun dar, "10 gram · Ba…"
      * diye kırpılıyordu — ayrı küçük bir satırda.
      */
-    val location: String? = null
+    val location: String? = null,
+    val logoUrl: String? = null
 )
 
 @Composable
@@ -82,7 +83,7 @@ fun AssetRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        AssetIconTile(icon = item.icon, tintHex = item.tintHex, flag = item.flag)
+        AssetIconTile(icon = item.icon, tintHex = item.tintHex, flag = item.flag, logoUrl = item.logoUrl)
 
         Column(
             modifier = Modifier.weight(1f),

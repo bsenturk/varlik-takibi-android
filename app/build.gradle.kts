@@ -144,6 +144,10 @@ dependencies {
     // AdMob
     implementation(libs.play.services.ads)
 
+    // Kripto/hisse logoları
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+
 
     // Testing
     testImplementation(libs.junit)
