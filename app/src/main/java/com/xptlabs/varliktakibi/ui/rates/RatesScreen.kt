@@ -129,6 +129,20 @@ fun RatesScreen(viewModel: RatesViewModel = hiltViewModel()) {
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(state.rates, key = { it.symbol }) { RateCard(it) }
+                    // Finans kategorisinde canlı fiyat gösterilen yerde kaynak ve
+                    // "yatırım tavsiyesi değildir" notu (Kullanım Koşulları'nda da var).
+                    item {
+                        Text(
+                            text = "Fiyatlar üçüncü taraf sağlayıcılardan alınır ve gecikmeli olabilir. " +
+                                "Bilgilendirme amaçlıdır, yatırım tavsiyesi değildir.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 8.dp)
+                        )
+                    }
                 }
             }
         }
