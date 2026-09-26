@@ -52,6 +52,7 @@ fun DashboardScreen(
     onPortfolioLimitReached: () -> Unit,
     /** Aboneliği bitmiş kullanıcı kilitli bir varlığa/özete dokundu. */
     onLockedContent: () -> Unit,
+    onOpenCurrency: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -119,7 +120,7 @@ fun DashboardScreen(
                                 ?: com.xptlabs.varliktakibi.core.model.PortfolioColor.BLUE,
                             metrics = state.metrics,
                             currency = state.currency,
-                            onCurrencyChange = viewModel::setCurrency,
+                            onCurrencyClick = onOpenCurrency,
                             valuesMasked = state.valuesMasked,
                             onToggleMask = viewModel::toggleMask,
                             convert = { viewModel.convert(it, state.currency) },

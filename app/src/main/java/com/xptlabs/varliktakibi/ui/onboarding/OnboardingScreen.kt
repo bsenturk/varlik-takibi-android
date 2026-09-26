@@ -556,7 +556,7 @@ private fun MockBalanceCard(
             hasMissingPrices = false
         ),
         currency = Currency.TRY,
-        onCurrencyChange = {},
+        onCurrencyClick = null,
         // null: tanıtımda gizleme düğmesi yok.
         valuesMasked = null,
         onToggleMask = {},

@@ -32,6 +32,7 @@ import com.xptlabs.varliktakibi.ui.onboarding.OnboardingScreen
 import com.xptlabs.varliktakibi.ui.paywall.PaywallContext
 import com.xptlabs.varliktakibi.ui.paywall.PaywallScreen
 import com.xptlabs.varliktakibi.ui.portfolio.AssetEditScreen
+import com.xptlabs.varliktakibi.ui.settings.CurrencySelectionScreen
 import com.xptlabs.varliktakibi.ui.settings.FeedbackScreen
 import com.xptlabs.varliktakibi.ui.portfolio.DashboardScreen
 import com.xptlabs.varliktakibi.ui.rates.RatesScreen
@@ -85,6 +86,7 @@ private fun MainContent(
     var editingAssetId by remember { mutableStateOf<String?>(null) }
     var paywallContext by remember { mutableStateOf<PaywallContext?>(null) }
     var showFeedback by remember { mutableStateOf(false) }
+    var showCurrencyPicker by remember { mutableStateOf(false) }
     // Ekleme akışının kapanışını olay olarak taşıyoruz: doğrudan `showAddAsset`
     // üzerinde LaunchedEffect kurmak ilk kompozisyonda da tetikleniyor ve
     // onboarding paywall bayrağını daha ekran açılmadan tüketiyordu.
@@ -122,14 +124,16 @@ private fun MainContent(
             MainTab.PORTFOLIO -> DashboardScreen(
                 onEditAsset = { editingAssetId = it },
                 onPortfolioLimitReached = { paywallContext = PaywallContext.PORTFOLIO_LIMIT },
-                onLockedContent = { paywallContext = PaywallContext.FUND }
+                onLockedContent = { paywallContext = PaywallContext.FUND },
+                onOpenCurrency = { showCurrencyPicker = true }
             )
 
             MainTab.ANALYSIS -> AnalysisScreen()
             MainTab.RATES -> RatesScreen()
             MainTab.SETTINGS -> SettingsScreen(
                 onOpenPaywall = { paywallContext = PaywallContext.GENERAL },
-                onOpenFeedback = { showFeedback = true }
+                onOpenFeedback = { showFeedback = true },
+                onOpenCurrency = { showCurrencyPicker = true }
             )
         }
     }
@@ -174,6 +178,11 @@ private fun MainContent(
     editingAssetId?.let { assetId ->
         AssetEditScreen(assetId = assetId, onClose = { editingAssetId = null })
         BackHandler { editingAssetId = null }
+    }
+
+    if (showCurrencyPicker) {
+        CurrencySelectionScreen(onClose = { showCurrencyPicker = false })
+        BackHandler { showCurrencyPicker = false }
     }
 
     if (showFeedback) {

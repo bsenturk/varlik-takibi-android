@@ -3,6 +3,8 @@ package com.xptlabs.varliktakibi
 import com.xptlabs.varliktakibi.core.ext.Days
 import com.xptlabs.varliktakibi.core.ext.parseTimestampOrNull
 import com.xptlabs.varliktakibi.ui.addasset.toDoubleOrNullTr
+import com.xptlabs.varliktakibi.core.format.TrFormat
+import com.xptlabs.varliktakibi.core.model.Currency
 import com.xptlabs.varliktakibi.ui.common.DecimalInput
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -112,5 +114,16 @@ class DaysAndInputTest {
         assertEquals("12", DecimalInput.sanitize(" 1a2 ", maxDecimals = 2))
         assertEquals("15", DecimalInput.sanitize("1,5", maxDecimals = 0))
         assertEquals("", DecimalInput.sanitize("", maxDecimals = 2))
+    }
+
+    // ── Para birimi biçimi ───────────────────────────────────────────────────
+
+    @Test
+    fun `para birimleri Turkce sayi duzeninde, kodlu isarette bosluk var`() {
+        assertEquals("1.234,50 ₺", TrFormat.money(1234.5, Currency.TRY))
+        assertEquals("$1.234,50", TrFormat.money(1234.5, Currency.USD))
+        assertEquals("CHF 1.234,50", TrFormat.money(1234.5, Currency.CHF))
+        assertEquals(15, Currency.entries.size)
+        assertEquals("İsviçre Frangı", Currency.CHF.displayName)
     }
 }

@@ -16,21 +16,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,7 +50,8 @@ fun BalanceCard(
     portfolioColor: PortfolioColor,
     metrics: PortfolioMetrics,
     currency: Currency,
-    onCurrencyChange: (Currency) -> Unit,
+    /** Para birimi seçim ekranını açar; null ise çip salt gösterim (onboarding). */
+    onCurrencyClick: (() -> Unit)?,
     /** null ise göz düğmesi gizlenir (onboarding örnekleri). */
     valuesMasked: Boolean?,
     onToggleMask: () -> Unit,
@@ -111,7 +105,7 @@ fun BalanceCard(
                 if (valuesMasked != null) {
                     MaskToggle(masked = masked, onToggle = onToggleMask)
                 }
-                CurrencyMenu(selected = currency, onSelect = onCurrencyChange)
+                CurrencyChip(selected = currency, onClick = onCurrencyClick)
             }
 
             Text(
@@ -303,49 +297,28 @@ private fun MaskToggle(masked: Boolean, onToggle: () -> Unit) {
 }
 
 @Composable
-private fun CurrencyMenu(selected: Currency, onSelect: (Currency) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box {
-        Row(
-            modifier = Modifier
-                .padding(start = 8.dp)
-                .clip(RoundedCornerShape(percent = 50))
-                .background(Color.White.copy(alpha = 0.18f))
-                .clickable { expanded = true }
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = selected.code,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White
-            )
-            Icon(
-                imageVector = Icons.Filled.ExpandMore,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(14.dp)
-            )
-        }
-
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            Currency.entries.forEach { currency ->
-                DropdownMenuItem(
-                    text = { Text(currency.displayName) },
-                    trailingIcon = {
-                        if (currency == selected) {
-                            Icon(Icons.Filled.Check, contentDescription = null)
-                        }
-                    },
-                    onClick = {
-                        expanded = false
-                        onSelect(currency)
-                    }
-                )
-            }
-        }
+private fun CurrencyChip(selected: Currency, onClick: (() -> Unit)?) {
+    Row(
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .clip(RoundedCornerShape(percent = 50))
+            .background(Color.White.copy(alpha = 0.18f))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = selected.code,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
+        Icon(
+            imageVector = Icons.Filled.ExpandMore,
+            contentDescription = null,
+            tint = Color.White,
+            modifier = Modifier.size(14.dp)
+        )
     }
 }

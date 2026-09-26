@@ -75,6 +75,7 @@ internal const val SUPPORT_EMAIL = "buraksenturktr@icloud.com"
 fun SettingsScreen(
     onOpenPaywall: () -> Unit,
     onOpenFeedback: () -> Unit,
+    onOpenCurrency: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -134,7 +135,13 @@ fun SettingsScreen(
 
         item {
             Section("Tercihler") {
-                CurrencyRow(selected = state.currency, onSelect = viewModel::setCurrency)
+                SettingsRow(
+                    icon = Icons.Filled.Payments,
+                    tintHex = "#0A84FF",
+                    title = "Para Birimi",
+                    value = "${state.currency.code} (${state.currency.symbol})",
+                    onClick = onOpenCurrency
+                )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                 DarkModeRow(selected = state.darkMode, onSelect = viewModel::setDarkMode)
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -348,35 +355,6 @@ private fun SettingsRow(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(20.dp)
             )
-        }
-    }
-}
-
-@Composable
-private fun CurrencyRow(selected: Currency, onSelect: (Currency) -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box {
-        SettingsRow(
-            icon = Icons.Filled.Payments,
-            tintHex = "#0A84FF",
-            title = "Para Birimi",
-            value = "${selected.code} (${selected.symbol})",
-            onClick = { expanded = true }
-        )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            Currency.entries.forEach { currency ->
-                DropdownMenuItem(
-                    text = { Text(currency.displayName) },
-                    trailingIcon = {
-                        if (currency == selected) Icon(Icons.Filled.Check, contentDescription = null)
-                    },
-                    onClick = {
-                        expanded = false
-                        onSelect(currency)
-                    }
-                )
-            }
         }
     }
 }

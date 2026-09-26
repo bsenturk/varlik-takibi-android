@@ -31,10 +31,16 @@ object TrFormat {
         return formatter(pattern).format(value)
     }
 
-    /** Tutar + para birimi sembolü. TL sonda, diğerleri başta (iOS ile aynı). */
+    /**
+     * Tutar + para birimi sembolü. TL sonda, diğerleri başta. Harf kodlu
+     * işaretlerde ("CHF") araya boşluk: "CHF1.234,50" okunmuyor.
+     */
     fun money(value: Double, currency: Currency = Currency.TRY): String = when (currency) {
         Currency.TRY -> "${decimal(value)} ₺"
-        else -> "${currency.symbol}${decimal(value)}"
+        else -> {
+            val symbol = currency.symbol
+            if (symbol.length > 1) "$symbol ${decimal(value)}" else "$symbol${decimal(value)}"
+        }
     }
 
     /**

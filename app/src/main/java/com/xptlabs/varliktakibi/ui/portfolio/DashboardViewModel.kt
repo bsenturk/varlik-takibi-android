@@ -332,13 +332,6 @@ class DashboardViewModel @Inject constructor(
         prefs.setSelectedPortfolioId(portfolio.id)
     }
 
-    fun setCurrency(currency: Currency) = viewModelScope.launch {
-        val previous = uiState.value.currency
-        if (previous == currency) return@launch
-        prefs.setSelectedCurrency(currency)
-        analytics.logCurrencyChanged(previous.code, currency.code)
-    }
-
     fun toggleMask() = viewModelScope.launch {
         uiState.value.selectedPortfolio?.let { prefs.togglePortfolioMask(it.id) }
     }
