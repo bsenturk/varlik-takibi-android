@@ -194,9 +194,9 @@ class MarketDataStore @Inject constructor(
         when (backendType) {
             "bist" -> symbol.removeSuffix(".IS")
             "us_stock", "us_etf" -> symbol
-            "crypto" -> rawName?.takeIf { it.isNotBlank() }
-                ?.split(" ")?.joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } }
-                ?: symbol
+            // `name` CoinGecko id'si ("avalanche-2", "binancecoin") — backend
+            // grafik/logo için onu id olarak kullanıyor, değiştirilemez.
+            "crypto" -> rawName?.takeIf { it.isNotBlank() }?.let(::cryptoDisplayName) ?: symbol
             else -> rawName ?: symbol
         }
 
@@ -244,8 +244,36 @@ class MarketDataStore @Inject constructor(
         autoRefreshJob = null
     }
 
-    private companion object {
-        const val TAG = "MarketDataStore"
-        const val REFRESH_INTERVAL_MS = 60_000L
+    companion object {
+        private const val TAG = "MarketDataStore"
+
+        /** Genel kuralın ("shiba-inu" → "Shiba Inu") yanlış sonuç verdiği id'ler. */
+        private val CRYPTO_NAMES = mapOf(
+            "binancecoin" to "BNB",
+            "ripple" to "XRP",
+            "avalanche-2" to "Avalanche",
+            "the-open-network" to "Toncoin",
+            "usd-coin" to "USD Coin",
+            "render-token" to "Render",
+            "hedera-hashgraph" to "Hedera",
+            "injective-protocol" to "Injective",
+            "polygon-ecosystem-token" to "Polygon",
+            "worldcoin-wld" to "Worldcoin",
+            "jupiter-exchange-solana" to "Jupiter",
+            "sei-network" to "Sei",
+            "fetch-ai" to "Fetch.ai",
+            "ondo-finance" to "Ondo",
+            "vechain" to "VeChain",
+            "near" to "NEAR",
+            "tron" to "TRON"
+        )
+
+        /** CoinGecko id'sinden okunur ad: önce eşleme, yoksa tire → boşluk + baş harf. */
+        fun cryptoDisplayName(id: String): String =
+            CRYPTO_NAMES[id] ?: id.replace('-', ' ').split(' ').joinToString(" ") { w ->
+                w.replaceFirstChar { it.titlecase(java.util.Locale.ROOT) }
+            }
+
+        private const val REFRESH_INTERVAL_MS = 60_000L
     }
 }

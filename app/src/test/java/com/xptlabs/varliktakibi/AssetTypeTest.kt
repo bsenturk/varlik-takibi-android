@@ -2,6 +2,7 @@ package com.xptlabs.varliktakibi
 
 import com.xptlabs.varliktakibi.core.model.AssetCategory
 import com.xptlabs.varliktakibi.core.model.AssetType
+import com.xptlabs.varliktakibi.market.MarketDataStore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -89,5 +90,13 @@ class AssetTypeTest {
         assertEquals(AssetCategory.BES, AssetType.BES.category)
         assertEquals("Yatırdığın Tutar", AssetType.BES.manualCostLabel)
         assertEquals("MANUAL-abc", AssetType.manualSymbol("abc"))
+    }
+
+    @Test
+    fun `coin adlari CoinGecko id'sinden okunur uretilir`() {
+        assertEquals("Shiba Inu", MarketDataStore.cryptoDisplayName("shiba-inu"))
+        assertEquals("Bitcoin", MarketDataStore.cryptoDisplayName("bitcoin"))
+        assertEquals("Avalanche", MarketDataStore.cryptoDisplayName("avalanche-2"))
+        assertEquals("BNB", MarketDataStore.cryptoDisplayName("binancecoin"))
     }
 }
