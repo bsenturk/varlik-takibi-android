@@ -1,5 +1,6 @@
 package com.xptlabs.varliktakibi.ui.settings
 
+import com.xptlabs.varliktakibi.core.LegalLinks
 import com.xptlabs.varliktakibi.ui.paywall.PaywallContext
 import androidx.activity.compose.LocalActivity
 import android.content.Intent
@@ -68,8 +69,6 @@ import com.xptlabs.varliktakibi.core.model.Currency
 import com.xptlabs.varliktakibi.data.prefs.DarkModePreference
 import com.xptlabs.varliktakibi.ui.theme.AppColors
 
-private const val PRIVACY_URL = "https://bsenturk.github.io/varliktakibi-legal/privacy.html"
-private const val TERMS_URL = "https://bsenturk.github.io/varliktakibi-legal/terms.html"
 internal const val SUPPORT_EMAIL = "buraksenturktr@icloud.com"
 
 @Composable
@@ -229,7 +228,7 @@ fun SettingsScreen(
                     tintHex = "#8E8E93",
                     title = "Gizlilik Politikası",
                     onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL)))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(LegalLinks.PRIVACY)))
                     }
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
@@ -238,7 +237,7 @@ fun SettingsScreen(
                     tintHex = "#8E8E93",
                     title = "Kullanım Koşulları",
                     onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(TERMS_URL)))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(LegalLinks.TERMS)))
                     }
                 )
             }

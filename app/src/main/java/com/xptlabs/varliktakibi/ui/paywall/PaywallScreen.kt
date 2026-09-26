@@ -28,7 +28,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,6 +38,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.activity.compose.LocalActivity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Autorenew
+import com.xptlabs.varliktakibi.core.LegalLinks
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -61,6 +65,7 @@ fun PaywallScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val activity = LocalActivity.current
+    val uriHandler = LocalUriHandler.current
 
     LaunchedEffect(context) { viewModel.onShown(context) }
     LaunchedEffect(state.purchaseSucceeded) {
@@ -149,6 +154,31 @@ fun PaywallScreen(
                 }
             }
 
+            // Finans uygulamasında ödemenin önündeki asıl engel güven. İki iddia
+            // da doğru: sunucuya yalnızca cihaz kimliği + FCM token gidiyor,
+            // portföy Room'da cihazda duruyor, analitik tutar taşımıyor.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                TrustItem(Icons.Filled.Shield, "Hesap gerekmez — portföyün cihazında kalır")
+                TrustItem(Icons.Filled.Autorenew, "İstediğin an iptal edebilirsin")
+            }
+
+            // Otomatik yenileme açıklaması: abonelik ekranında görünmesi gerekiyor.
+            Text(
+                text = finePrint(state.selectedPlan),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterHorizontally)
+            ) {
+                LegalLink("Kullanım Koşulları") { uriHandler.openUri(LegalLinks.TERMS) }
+                LegalLink("Gizlilik Politikası") { uriHandler.openUri(LegalLinks.PRIVACY) }
+                LegalLink("Geri Yükle", onClick = viewModel::restore)
+            }
+
         }
 
         // Planlar ve satın alma butonu altta sabit: küçük ekranda kaydırmadan
@@ -222,12 +252,6 @@ fun PaywallScreen(
                 }
             }
 
-            TextButton(
-                onClick = viewModel::restore,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Satın alımları geri yükle", fontSize = 14.sp)
-            }
 
             state.message?.let { message ->
                 Text(
@@ -289,4 +313,30 @@ private fun PlanCard(
             )
         }
     }
+}
+
+@Composable
+private fun TrustItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(icon, contentDescription = null, tint = AppColors.pro, modifier = Modifier.size(15.dp))
+        Text(text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun LegalLink(text: String, onClick: () -> Unit) {
+    Text(
+        text,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.clickable(onClick = onClick)
+    )
+}
+
+private fun finePrint(plan: PlanOption?): String {
+    val renew = "Abonelik otomatik yenilenir; dönem bitiminden en az 24 saat önce iptal etmezsen aynı ücretle yenilenir."
+    if (plan == null) return renew
+    val price = "${plan.price}/${plan.periodSuffix}"
+    return if (plan.trialLabel != null) "${plan.trialLabel} ücretsiz, sonra $price. $renew" else "$price. $renew"
 }

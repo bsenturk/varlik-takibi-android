@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.revenuecat.purchases.Package
+import com.revenuecat.purchases.models.Period
 import com.revenuecat.purchases.PackageType
 import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.billing.PurchaseManager
@@ -93,7 +94,9 @@ data class PlanOption(
     val label: String,
     val periodSuffix: String,
     val price: String,
-    val hasTrial: Boolean
+    val hasTrial: Boolean,
+    /** "7 gün" — deneme süresi; deneme yoksa null. */
+    val trialLabel: String? = null
 )
 
 data class PaywallUiState(
@@ -208,7 +211,17 @@ class PaywallViewModel @Inject constructor(
             // aşaması olarak modelleniyor. Kullanıcı denemeyi daha önce
             // kullandıysa Play bu aşamayı hiç döndürmüyor — yani "Ücretsiz Dene"
             // yazıp anında ücret almış olmuyoruz.
-            hasTrial = pkg.product.defaultOption?.freePhase != null
+            hasTrial = pkg.product.defaultOption?.freePhase != null,
+            trialLabel = pkg.product.defaultOption?.freePhase?.billingPeriod?.let { p ->
+                val unit = when (p.unit) {
+                    Period.Unit.DAY -> "gün"
+                    Period.Unit.WEEK -> "hafta"
+                    Period.Unit.MONTH -> "ay"
+                    Period.Unit.YEAR -> "yıl"
+                    else -> "gün"
+                }
+                "${p.value} $unit"
+            }
         )
     }
 }
