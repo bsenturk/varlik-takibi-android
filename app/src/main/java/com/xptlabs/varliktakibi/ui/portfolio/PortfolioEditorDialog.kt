@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -26,15 +28,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.xptlabs.varliktakibi.core.format.TrFormat
 import com.xptlabs.varliktakibi.core.model.PortfolioColor
 import com.xptlabs.varliktakibi.data.local.entity.color
 
-/** Portföy oluşturma/düzenleme: ad + 6 renkli palet. iOS `PortfolioEditorView`. */
+/** Portföy oluşturma/düzenleme: ad + 6 renkli palet + hedef. iOS `PortfolioEditorView`. */
 @Composable
 fun PortfolioEditorDialog(
     mode: PortfolioEditorMode,
-    onSave: (String, PortfolioColor) -> Unit,
+    onSave: (name: String, color: PortfolioColor, target: Double) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -44,6 +48,15 @@ fun PortfolioEditorDialog(
     var selectedColor by remember {
         mutableStateOf(editing?.portfolio?.color ?: PortfolioColor.BLUE)
     }
+    // ponytail: alanda binlik ayracı yok — ham rakam girilir, okunabilirliği
+    // alanın altındaki önizleme sağlar (iOS'ta canlı format tuşları eziyordu).
+    var targetText by remember {
+        mutableStateOf(
+            editing?.portfolio?.targetValue?.takeIf { it > 0 }?.toLong()?.toString().orEmpty()
+        )
+    }
+    /** Boş bırakmak hedefi kaldırır, o yüzden 0 geçerli bir değer. */
+    val parsedTarget = targetText.toDoubleOrNull() ?: 0.0
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -73,6 +86,27 @@ fun PortfolioEditorDialog(
                     }
                 }
 
+                androidx.compose.foundation.layout.Column {
+                    OutlinedTextField(
+                        value = targetText,
+                        onValueChange = { new -> targetText = new.filter(Char::isDigit).take(15) },
+                        label = { Text("Hedef (opsiyonel)") },
+                        prefix = { Text("₺ ") },
+                        placeholder = { Text("0") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (parsedTarget > 0) {
+                        Text(
+                            text = TrFormat.money(parsedTarget),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                        )
+                    }
+                }
+
                 if (editing != null) {
                     TextButton(onClick = onDelete) {
                         Text("Portföyü Sil", color = MaterialTheme.colorScheme.error)
@@ -82,7 +116,7 @@ fun PortfolioEditorDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(name.trim(), selectedColor) },
+                onClick = { onSave(name.trim(), selectedColor, parsedTarget) },
                 enabled = name.isNotBlank()
             ) { Text("Kaydet") }
         },

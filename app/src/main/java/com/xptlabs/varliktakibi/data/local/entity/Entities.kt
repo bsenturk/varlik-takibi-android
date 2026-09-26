@@ -1,5 +1,6 @@
 package com.xptlabs.varliktakibi.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -21,7 +22,12 @@ data class PortfolioEntity(
     val sortOrder: Int,
     /** Silinemeyen "Genel" portföy: her varlığı kategori bazında toplar. */
     val isGeneral: Boolean,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    /**
+     * Değer hedefi (TL). 0 = hedef yok. "Genel"de kullanılmaz — oranın hedefi
+     * alt portföylerin toplamından türetilir.
+     */
+    @ColumnInfo(defaultValue = "0") val targetValue: Double = 0.0
 )
 
 @Entity(

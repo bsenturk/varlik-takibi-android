@@ -4,6 +4,8 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.xptlabs.varliktakibi.data.local.dao.AssetDao
 import com.xptlabs.varliktakibi.data.local.dao.HistoryDao
 import com.xptlabs.varliktakibi.data.local.dao.PortfolioDao
@@ -32,7 +34,7 @@ class Converters {
         TransactionHistoryEntity::class,
         PortfolioSnapshotEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -50,5 +52,12 @@ abstract class AppDatabase : RoomDatabase() {
          */
         const val NAME = "varlik_takibi.db"
         const val LEGACY_NAME = "asset_tracker_db"
+
+        /** 3.2.0: portföy hedefi. */
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE portfolios ADD COLUMN targetValue REAL NOT NULL DEFAULT 0")
+            }
+        }
     }
 }

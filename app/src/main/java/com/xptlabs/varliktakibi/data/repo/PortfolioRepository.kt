@@ -59,19 +59,33 @@ class PortfolioRepository @Inject constructor(
         }
     }
 
-    suspend fun createPortfolio(name: String, color: PortfolioColor): PortfolioEntity {
+    suspend fun createPortfolio(
+        name: String,
+        color: PortfolioColor,
+        target: Double = 0.0
+    ): PortfolioEntity {
         val portfolio = PortfolioEntity(
             name = name,
             colorHex = color.hex,
             sortOrder = portfolioDao.maxSortOrder() + 1,
-            isGeneral = false
+            isGeneral = false,
+            targetValue = maxOf(0.0, target)
         )
         portfolioDao.insert(portfolio)
         return portfolio
     }
 
-    suspend fun updatePortfolio(portfolio: PortfolioEntity, name: String, color: PortfolioColor) {
-        portfolioDao.update(portfolio.copy(name = name, colorHex = color.hex))
+    suspend fun updatePortfolio(
+        portfolio: PortfolioEntity,
+        name: String,
+        color: PortfolioColor,
+        target: Double
+    ) {
+        // "Genel" editöre hiç girmiyor: hedefi alt portföylerin toplamından türetiliyor.
+        if (portfolio.isGeneral) return
+        portfolioDao.update(
+            portfolio.copy(name = name, colorHex = color.hex, targetValue = maxOf(0.0, target))
+        )
     }
 
     /**

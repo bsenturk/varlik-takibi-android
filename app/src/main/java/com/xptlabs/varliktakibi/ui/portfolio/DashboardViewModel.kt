@@ -47,6 +47,11 @@ data class DashboardUiState(
     /** Pro bitince erişimi kapanan portföyler; chip'ler buna göre kilitlenir. */
     val lockedPortfolioIds: Set<String> = emptySet(),
     /**
+     * Kartta gösterilen hedef (TL, 0 = yok). "Genel" kendi hedefini tutmaz:
+     * kilitsiz portföylerin hedeflerinin toplamını gösterir.
+     */
+    val targetValue: Double = 0.0,
+    /**
      * Veritabanından ilk sonuç geldi mi. Bu ayrım olmadan başlangıçtaki boş
      * durum "hiç varlığın yok" ekranı olarak çiziliyor, veri gelince
      * kayboluyordu — açılışta göze çarpan titreme buydu.
@@ -150,6 +155,13 @@ class DashboardViewModel @Inject constructor(
             errorMessage = error,
             isPro = isPro,
             lockedPortfolioIds = lockedIds,
+            targetValue = if (selected?.isGeneral == true) {
+                // Kilitli portföyler toplamdan düşer — varlıkları da bakiyeye
+                // girmiyor, yoksa oran olduğundan düşük çıkardı.
+                portfolios.filter { !it.isGeneral && it.id !in lockedIds }.sumOf { it.targetValue }
+            } else {
+                selected?.targetValue ?: 0.0
+            },
             isLoaded = true
         )
     }
@@ -324,14 +336,18 @@ class DashboardViewModel @Inject constructor(
         uiState.value.selectedPortfolio?.let { prefs.togglePortfolioMask(it.id) }
     }
 
-    fun createPortfolio(name: String, color: PortfolioColor) = viewModelScope.launch {
-        val created = repository.createPortfolio(name, color)
+    fun createPortfolio(name: String, color: PortfolioColor, target: Double) = viewModelScope.launch {
+        val created = repository.createPortfolio(name, color, target)
         prefs.setSelectedPortfolioId(created.id)
         analytics.logPortfolioCreated(uiState.value.portfolios.count { !it.isGeneral } + 1)
     }
 
-    fun updatePortfolio(portfolio: PortfolioEntity, name: String, color: PortfolioColor) =
-        viewModelScope.launch { repository.updatePortfolio(portfolio, name, color) }
+    fun updatePortfolio(
+        portfolio: PortfolioEntity,
+        name: String,
+        color: PortfolioColor,
+        target: Double
+    ) = viewModelScope.launch { repository.updatePortfolio(portfolio, name, color, target) }
 
     fun deletePortfolio(portfolio: PortfolioEntity) = viewModelScope.launch {
         repository.deletePortfolio(portfolio)

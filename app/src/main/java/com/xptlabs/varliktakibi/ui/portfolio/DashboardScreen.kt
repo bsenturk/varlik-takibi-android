@@ -122,7 +122,12 @@ fun DashboardScreen(
                             onCurrencyChange = viewModel::setCurrency,
                             valuesMasked = state.valuesMasked,
                             onToggleMask = viewModel::toggleMask,
-                            convert = { viewModel.convert(it, state.currency) }
+                            convert = { viewModel.convert(it, state.currency) },
+                            targetValue = state.targetValue,
+                            // "Genel" hedefi kendi tutmaz, türetir — orada düzenleme yok.
+                            onSetTarget = state.selectedPortfolio
+                                ?.takeIf { !it.isGeneral }
+                                ?.let { p -> { editorMode = PortfolioEditorMode.Edit(p) } }
                         )
                     }
 
@@ -175,11 +180,12 @@ fun DashboardScreen(
         editorMode?.let { mode ->
             PortfolioEditorDialog(
                 mode = mode,
-                onSave = { name, color ->
+                onSave = { name, color, target ->
                     when (mode) {
-                        is PortfolioEditorMode.Create -> viewModel.createPortfolio(name, color)
+                        is PortfolioEditorMode.Create ->
+                            viewModel.createPortfolio(name, color, target)
                         is PortfolioEditorMode.Edit ->
-                            viewModel.updatePortfolio(mode.portfolio, name, color)
+                            viewModel.updatePortfolio(mode.portfolio, name, color, target)
                     }
                     editorMode = null
                 },
