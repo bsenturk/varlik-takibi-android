@@ -9,6 +9,7 @@ import com.xptlabs.varliktakibi.core.model.PortfolioMetrics
 import com.xptlabs.varliktakibi.data.local.dao.HistoryDao
 import com.xptlabs.varliktakibi.data.local.dao.SnapshotDao
 import com.xptlabs.varliktakibi.data.local.entity.AssetEntity
+import com.xptlabs.varliktakibi.data.local.entity.assetType
 import com.xptlabs.varliktakibi.data.local.entity.PortfolioEntity
 import com.xptlabs.varliktakibi.data.local.entity.category
 import com.xptlabs.varliktakibi.data.local.entity.totalValue
@@ -271,18 +272,28 @@ class AnalysisViewModel @Inject constructor(
     /**
      * Günlük değişim varlık başına **bir kez** hesaplanır; doğrudan sıralama
      * karşılaştırıcısında hesaplamak n log n sorgu açardı.
+     *
+     * Kaynak backend'in `change_percent`'i: yerel anlık görüntüler yalnızca
+     * uygulama açıkken yazıldığı için bayatlıyordu (üç gün girmeyen kullanıcıda
+     * "günlük" değişim üç günlüktü). Alan boşsa (fonlar) yerel geçmiş yedek.
+     * Elle girilen varlıkların (ev, BES) piyasa hareketi yok, dahil değil.
      */
     private fun movers(
         assets: List<AssetEntity>,
         previousCloses: Map<String, Double>
     ): Pair<List<MoverItem>, List<MoverItem>> {
         val changes = assets.mapNotNull { asset ->
-            val price = asset.currentPrice ?: return@mapNotNull null
-            val previous = previousCloses[asset.symbol]?.takeIf { it > 0 } ?: return@mapNotNull null
+            if (asset.assetType.isManual) return@mapNotNull null
+            val change = market.dayChangePercentTry(asset.symbol) ?: run {
+                val price = asset.currentPrice ?: return@mapNotNull null
+                val previous = previousCloses[asset.symbol]?.takeIf { it > 0 }
+                    ?: return@mapNotNull null
+                (price - previous) / previous * 100.0
+            }
             MoverItem(
                 id = asset.id,
                 name = asset.name,
-                changePercent = (price - previous) / previous * 100.0,
+                changePercent = change,
                 tintHex = asset.category.tintHex
             )
         }

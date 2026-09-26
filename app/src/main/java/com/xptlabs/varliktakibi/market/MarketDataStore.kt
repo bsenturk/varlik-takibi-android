@@ -120,6 +120,21 @@ class MarketDataStore @Inject constructor(
             ?: _prices.value.firstOrNull { it.symbol == symbol }?.changePercent
 
     /**
+     * Günlük değişim, TL bazında (backend'in `change_percent`'i). ABD hisse/ETF'de
+     * yalnızca USD satırı var: TL karşılığı hem enstrümanın hem kurun hareketini
+     * taşıdığı için ikisi bileşik hesaplanıyor — sıralama tek para biriminde
+     * kalsın. Yoksa (fonlarda alan boş) null.
+     */
+    fun dayChangePercentTry(symbol: String): Double? {
+        val rows = _prices.value.filter { it.symbol == symbol }
+        rows.firstOrNull { it.currency == "TRY" }?.changePercent?.let { return it }
+        val usd = rows.firstOrNull { it.currency == "USD" }?.changePercent ?: return null
+        val fx = _prices.value.firstOrNull { it.symbol == "USD" && it.currency == "TRY" }
+            ?.changePercent ?: 0.0
+        return ((1 + usd / 100) * (1 + fx / 100) - 1) * 100
+    }
+
+    /**
      * Enstrümanın kendi logosu; aynı sembolün bütün satırları aynı logoyu
      * taşıyor. null normal (altın, döviz, fon, logosu bulunamayan hisse).
      */

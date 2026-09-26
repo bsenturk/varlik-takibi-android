@@ -235,6 +235,13 @@ private fun DistributionCard(state: AnalysisUiState) {
 private fun MoversCard(title: String, items: List<MoverItem>) {
     Card {
         Text(text = title, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        // Portföy satırındaki yüzde maliyete göre; bu kart fiyat hareketi. İkisi
+        // aynı sayı sanılmasın diye taban yazılıyor.
+        Text(
+            text = "Son fiyat değişimine göre",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         items.forEach { item ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
