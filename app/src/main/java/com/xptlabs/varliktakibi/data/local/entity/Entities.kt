@@ -87,11 +87,18 @@ enum class TransactionType { INITIAL, ADD, REMOVE, EDIT }
 
 @Entity(
     tableName = "transaction_history",
-    indices = [Index("symbol"), Index("date")]
+    indices = [Index("symbol"), Index("date"), Index("assetId")]
 )
 data class TransactionHistoryEntity(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val symbol: String,
+    /**
+     * Kaydın ait olduğu varlık. Sembol tek başına yetmiyor: aynı enstrüman iki
+     * portföyde tutulabiliyor ve geçmişleri karışıyordu. null = 3.2.0 öncesi
+     * kayıt; migration'da sembolü tek bir varlıkta olanlar o varlığa atandı,
+     * belirsiz kalanlar sembolle eşleşmeye devam ediyor.
+     */
+    val assetId: String? = null,
     val date: Long,
     val transactionType: TransactionType,
     /** İşlemin kendi miktarı (eklenen/çıkarılan). */

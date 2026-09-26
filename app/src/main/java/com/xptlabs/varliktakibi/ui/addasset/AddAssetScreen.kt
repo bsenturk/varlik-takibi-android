@@ -59,6 +59,7 @@ import com.xptlabs.varliktakibi.core.format.TrFormat
 import com.xptlabs.varliktakibi.core.model.AssetCategory
 import com.xptlabs.varliktakibi.data.local.entity.color
 import com.xptlabs.varliktakibi.market.Instrument
+import com.xptlabs.varliktakibi.ui.common.ScreenNavBar
 import com.xptlabs.varliktakibi.ui.common.AssetIconTile
 import com.xptlabs.varliktakibi.ui.common.Keypad
 import com.xptlabs.varliktakibi.ui.common.KeypadInput
@@ -98,7 +99,7 @@ fun AddAssetScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        NavBar(
+        ScreenNavBar(
             title = when (val step = state.step) {
                 is AddAssetStep.Category -> "Varlık Ekle"
                 is AddAssetStep.InstrumentList -> step.category.displayName
@@ -148,58 +149,6 @@ fun AddAssetScreen(
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun NavBar(
-    title: String,
-    isFirstStep: Boolean,
-    onBack: () -> Unit,
-    onClose: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconCircle(
-            icon = if (isFirstStep) Icons.Filled.Close else Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = if (isFirstStep) "Kapat" else "Geri",
-            onClick = if (isFirstStep) onClose else onBack
-        )
-        Text(
-            text = title,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 8.dp)
-        )
-        // Başlığın gerçekten ortalanması için sağda simetrik boşluk.
-        Box(modifier = Modifier.size(36.dp))
-    }
-}
-
-@Composable
-private fun IconCircle(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .background(AppColors.subtleFill)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(18.dp))
     }
 }
 

@@ -53,10 +53,26 @@ abstract class AppDatabase : RoomDatabase() {
         const val NAME = "varlik_takibi.db"
         const val LEGACY_NAME = "asset_tracker_db"
 
-        /** 3.2.0: portföy hedefi. */
+        /** 3.2.0: portföy hedefi, işlemlerin varlığa bağlanması. */
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE portfolios ADD COLUMN targetValue REAL NOT NULL DEFAULT 0")
+
+                db.execSQL("ALTER TABLE transaction_history ADD COLUMN assetId TEXT")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_transaction_history_assetId " +
+                        "ON transaction_history (assetId)"
+                )
+                // Eski kayıtlar: sembolü tek bir varlıkta duranlar o varlığa atanır.
+                // Birden fazla portföyde tutulan sembollerinki belirsiz; sembolle
+                // eşleşmeye devam ederler (eski davranış).
+                db.execSQL(
+                    """
+                    UPDATE transaction_history SET assetId =
+                        (SELECT a.id FROM assets a WHERE a.symbol = transaction_history.symbol)
+                    WHERE (SELECT COUNT(*) FROM assets a WHERE a.symbol = transaction_history.symbol) = 1
+                    """
+                )
             }
         }
     }

@@ -64,13 +64,13 @@ class TimeMachine @Inject constructor(
         )
 
         // ── 2 + 4 + 5: her eksik günü oynat, değerle ve kaydet ───────────────
-        val amountsBySymbol = assets.associate { it.symbol to historicalAmounts(it) }
+        val amountsByAsset = assets.associate { it.id to historicalAmounts(it) }
         val snapshots = mutableListOf<PortfolioSnapshotEntity>()
 
         for (day in missing) {
             var total = 0.0
             for (asset in assets) {
-                val amount = amountOn(day, asset, amountsBySymbol[asset.symbol].orEmpty())
+                val amount = amountOn(day, asset, amountsByAsset[asset.id].orEmpty())
                 if (amount <= 0) continue
                 val price = priceOn(asset.symbol, day, series) ?: continue
                 total += amount * price
@@ -95,7 +95,7 @@ class TimeMachine @Inject constructor(
 
     /** (gün, o günün sonundaki toplam miktar) çiftleri, artan sırada. */
     private suspend fun historicalAmounts(asset: AssetEntity): List<Pair<Long, Double>> =
-        historyDao.transactions(asset.symbol)
+        historyDao.transactions(asset.id, asset.symbol)
             .map { Days.startOf(it.date) to it.totalAmount }
             .sortedBy { it.first }
 

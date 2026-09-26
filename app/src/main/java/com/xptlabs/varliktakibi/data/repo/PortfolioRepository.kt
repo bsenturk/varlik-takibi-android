@@ -96,11 +96,13 @@ class PortfolioRepository @Inject constructor(
     suspend fun deletePortfolio(portfolio: PortfolioEntity) {
         if (portfolio.isGeneral) return
         val owned = assetDao.getForPortfolio(portfolio.id)
+        owned.forEach { historyDao.deleteTransactionsOf(it.id) }
         portfolioDao.delete(portfolio)
         owned.forEach { deleteOrphanHistory(it.symbol) }
     }
 
     suspend fun deleteAsset(asset: AssetEntity) {
+        historyDao.deleteTransactionsOf(asset.id)
         assetDao.delete(asset)
         deleteOrphanHistory(asset.symbol)
     }

@@ -100,7 +100,9 @@ class AssetEditor @Inject constructor(
             asset = updated,
             type = type,
             delta = kotlin.math.abs(newAmount - asset.amount),
-            price = asset.costBasis
+            // O günün piyasa fiyatı: geçmiş ekranı "o gün kaça alındı / satıldı"yı
+            // bununla gösteriyor. Fiyat yoksa maliyet.
+            price = updated.currentPrice ?: asset.costBasis
         )
         history.recordDailySnapshot(updated)
     }

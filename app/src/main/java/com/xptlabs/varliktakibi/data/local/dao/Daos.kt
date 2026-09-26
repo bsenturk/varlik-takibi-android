@@ -111,8 +111,18 @@ interface HistoryDao {
 
     // ── İşlem geçmişi ────────────────────────────────────────────────────────
 
-    @Query("SELECT * FROM transaction_history WHERE symbol = :symbol ORDER BY date")
-    suspend fun transactions(symbol: String): List<TransactionHistoryEntity>
+    /**
+     * Bir varlığın işlemleri, eskiden yeniye. Eski (assetId'siz) kayıtlar
+     * sembolle eşleşir.
+     */
+    @Query(
+        """
+        SELECT * FROM transaction_history
+        WHERE assetId = :assetId OR (assetId IS NULL AND symbol = :symbol)
+        ORDER BY date, createdAt
+        """
+    )
+    suspend fun transactions(assetId: String, symbol: String): List<TransactionHistoryEntity>
 
     @Insert
     suspend fun insertTransaction(entry: TransactionHistoryEntity)
@@ -120,12 +130,18 @@ interface HistoryDao {
     @Query(
         """
         DELETE FROM transaction_history WHERE id IN (
-            SELECT id FROM transaction_history WHERE symbol = :symbol ORDER BY date DESC
+            SELECT id FROM transaction_history
+            WHERE assetId = :assetId OR (assetId IS NULL AND symbol = :symbol)
+            ORDER BY date DESC
             LIMIT -1 OFFSET :keep
         )
         """
     )
-    suspend fun trimTransactions(symbol: String, keep: Int)
+    suspend fun trimTransactions(assetId: String, symbol: String, keep: Int)
+
+    /** Yalnızca bu varlığın işlemleri — aynı sembolü tutan başka varlığınki kalır. */
+    @Query("DELETE FROM transaction_history WHERE assetId = :assetId")
+    suspend fun deleteTransactionsOf(assetId: String)
 
     @Query("DELETE FROM transaction_history WHERE symbol = :symbol")
     suspend fun deleteTransactions(symbol: String)

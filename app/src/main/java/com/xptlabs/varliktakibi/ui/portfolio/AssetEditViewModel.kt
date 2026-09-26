@@ -5,15 +5,19 @@ import androidx.lifecycle.viewModelScope
 import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.data.local.dao.AssetDao
 import com.xptlabs.varliktakibi.data.local.entity.AssetEntity
+import com.xptlabs.varliktakibi.data.local.entity.TransactionHistoryEntity
 import com.xptlabs.varliktakibi.data.local.entity.category
+import com.xptlabs.varliktakibi.data.prefs.AppPreferences
 import com.xptlabs.varliktakibi.data.repo.AssetEditor
 import com.xptlabs.varliktakibi.data.repo.PortfolioRepository
+import com.xptlabs.varliktakibi.history.HistoryRecorder
 import com.xptlabs.varliktakibi.market.MarketDataStore
 import com.xptlabs.varliktakibi.ui.addasset.toDoubleOrNullTr
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,16 +25,29 @@ import javax.inject.Inject
 data class AssetEditUiState(
     val asset: AssetEntity? = null,
     val marketPrice: Double? = null,
+    /** Yeniden eskiye — geçmiş ekranı bu sırayla listeliyor. */
+    val transactions: List<TransactionHistoryEntity> = emptyList(),
+    /** Varlığın portföyünün gözü kapalıysa tutarlar maskelenir. */
+    val valuesMasked: Boolean = false,
     val errorMessage: String? = null,
     val finished: Boolean = false
-)
+) {
+    /** Türk Lirası'nın fiyatı hep 1 — maliyeti ve değişimi anlamsız. */
+    val isTRY: Boolean get() = asset?.symbol == "TRY"
+
+    /** Canlı fiyat, yoksa son bilinen. */
+    val currentPrice: Double?
+        get() = if (isTRY) 1.0 else marketPrice ?: asset?.currentPrice
+}
 
 @HiltViewModel
 class AssetEditViewModel @Inject constructor(
     private val assetDao: AssetDao,
     private val editor: AssetEditor,
     private val repository: PortfolioRepository,
+    private val history: HistoryRecorder,
     private val market: MarketDataStore,
+    private val prefs: AppPreferences,
     private val analytics: FirebaseAnalyticsManager
 ) : ViewModel() {
 
@@ -40,7 +57,12 @@ class AssetEditViewModel @Inject constructor(
     fun load(assetId: String) = viewModelScope.launch {
         val asset = assetDao.getById(assetId)
         _uiState.update {
-            it.copy(asset = asset, marketPrice = asset?.let { a -> market.tryPrice(a.symbol) })
+            it.copy(
+                asset = asset,
+                marketPrice = asset?.let { a -> market.tryPrice(a.symbol) },
+                transactions = asset?.let { a -> history.transactions(a).asReversed() }.orEmpty(),
+                valuesMasked = asset != null && asset.portfolioId in prefs.maskedPortfolioIds.first()
+            )
         }
     }
 
@@ -76,6 +98,13 @@ class AssetEditViewModel @Inject constructor(
             _uiState.update { it.copy(finished = true) }
         }
     }
+
+    /**
+     * ViewModel Activity'ye bağlı, ekranla birlikte yok olmuyor: kapanışta
+     * sıfırlanmazsa kalan `finished` ikinci açılışta ekranı anında kapatıyor,
+     * önceki varlık da bir kare görünüyordu.
+     */
+    fun reset() { _uiState.value = AssetEditUiState() }
 
     fun clearError() = _uiState.update { it.copy(errorMessage = null) }
 }

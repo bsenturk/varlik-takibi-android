@@ -45,6 +45,7 @@ class HistoryRecorder @Inject constructor(
         dao.insertTransaction(
             TransactionHistoryEntity(
                 symbol = asset.symbol,
+                assetId = asset.id,
                 date = asset.dateAdded,
                 transactionType = TransactionType.INITIAL,
                 amount = asset.amount,
@@ -63,6 +64,7 @@ class HistoryRecorder @Inject constructor(
         dao.insertTransaction(
             TransactionHistoryEntity(
                 symbol = asset.symbol,
+                assetId = asset.id,
                 date = System.currentTimeMillis(),
                 transactionType = type,
                 amount = delta,
@@ -70,13 +72,13 @@ class HistoryRecorder @Inject constructor(
                 price = price
             )
         )
-        dao.trimTransactions(asset.symbol, MAX_TRANSACTIONS)
+        dao.trimTransactions(asset.id, asset.symbol, MAX_TRANSACTIONS)
     }
 
     suspend fun priceHistory(symbol: String): List<PriceHistoryEntity> = dao.priceHistory(symbol)
 
-    suspend fun transactions(symbol: String): List<TransactionHistoryEntity> =
-        dao.transactions(symbol)
+    suspend fun transactions(asset: AssetEntity): List<TransactionHistoryEntity> =
+        dao.transactions(asset.id, asset.symbol)
 
     /**
      * Bugünden önceki son bilinen fiyat — "günlük değişim" için referans.
