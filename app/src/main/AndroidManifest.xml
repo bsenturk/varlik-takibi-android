@@ -40,6 +40,8 @@
             android:label="@string/app_name"
             android:windowSoftInputMode="adjustResize"
             android:launchMode="singleTop"
+            android:screenOrientation="portrait"
+            tools:ignore="LockedOrientationActivity"
             android:theme="@style/Theme.VarlikTakibi">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
