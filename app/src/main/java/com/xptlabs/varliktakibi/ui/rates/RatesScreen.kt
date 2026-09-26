@@ -3,6 +3,8 @@ package com.xptlabs.varliktakibi.ui.rates
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,8 +71,11 @@ fun RatesScreen(viewModel: RatesViewModel = hiltViewModel()) {
 
         // Portföy ve Analiz sayfalarındaki chip şeridiyle aynı bileşen ve aynı
         // yerleşim ölçüleri — üç sekme tek bir görsel dile oturuyor.
+        // Beş çip dar ekrana sığmıyor: şerit kendi içinde yatay kayıyor.
         Row(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp),
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             RatesTab.entries.forEach { tab ->
@@ -85,7 +90,7 @@ fun RatesScreen(viewModel: RatesViewModel = hiltViewModel()) {
         OutlinedTextField(
             value = state.query,
             onValueChange = viewModel::setQuery,
-            placeholder = { Text("Ara") },
+            placeholder = { Text(state.tab.searchPlaceholder) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
@@ -110,7 +115,7 @@ fun RatesScreen(viewModel: RatesViewModel = hiltViewModel()) {
                         text = when {
                             state.errorMessage != null -> state.errorMessage!!
                             state.query.isNotBlank() -> "Sonuç bulunamadı."
-                            else -> "Kurlar yükleniyor…"
+                            else -> "Fiyatlar yükleniyor…"
                         },
                         fontSize = 15.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

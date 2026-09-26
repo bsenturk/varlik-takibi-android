@@ -17,9 +17,13 @@ import java.time.Duration
 import java.time.Instant
 import javax.inject.Inject
 
-enum class RatesTab(val label: String, val category: AssetCategory) {
-    GOLD("Altın", AssetCategory.GOLD),
-    CURRENCY("Döviz", AssetCategory.CURRENCY)
+/** ETF'ler bilerek yok: Pro özelliği, fiyatları da Pro'ya bağlı. */
+enum class RatesTab(val label: String, val category: AssetCategory, val searchPlaceholder: String) {
+    GOLD("Altın", AssetCategory.GOLD, "Altın ara"),
+    CURRENCY("Döviz", AssetCategory.CURRENCY, "Döviz ara"),
+    CRYPTO("Kripto", AssetCategory.CRYPTO, "Kripto ara"),
+    BIST("BIST", AssetCategory.BIST, "Hisse ara"),
+    US("ABD", AssetCategory.US_STOCK, "Hisse ara")
 }
 
 data class RatesUiState(
@@ -67,6 +71,8 @@ class RatesViewModel @Inject constructor(
             // 1 TRY = 1 TRY satırının kur listesinde işi yok.
             RatesTab.CURRENCY -> market.instruments(AssetCategory.CURRENCY)
                 .filterNot { it.symbol == "TRY" }
+
+            RatesTab.CRYPTO, RatesTab.BIST, RatesTab.US -> market.instruments(tab.category)
         }
 
         val trimmed = query.trim()
@@ -89,6 +95,8 @@ class RatesViewModel @Inject constructor(
 
     fun setTab(value: RatesTab) {
         if (tab.value == value) return
+        // Arama sekmeye ait: "THY" yazıp Kripto'ya geçen boş liste görmesin.
+        query.value = ""
         tab.value = value
         analytics.logRatesTabSelected(value.name)
     }
