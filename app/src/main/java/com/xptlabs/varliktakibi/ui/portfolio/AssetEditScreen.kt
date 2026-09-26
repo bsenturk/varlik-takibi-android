@@ -52,6 +52,7 @@ import com.xptlabs.varliktakibi.ui.addasset.toDoubleOrNullTr
 import com.xptlabs.varliktakibi.ui.common.AssetIconTile
 import com.xptlabs.varliktakibi.ui.common.DeleteConfirmDialog
 import com.xptlabs.varliktakibi.ui.common.LocationPicker
+import com.xptlabs.varliktakibi.ui.common.ManualNameField
 import com.xptlabs.varliktakibi.ui.common.ScreenNavBar
 import com.xptlabs.varliktakibi.ui.theme.AppColors
 import kotlin.math.abs
@@ -76,13 +77,24 @@ fun AssetEditScreen(
 
     val asset = state.asset ?: return
 
-    var amount by remember(asset.id) { mutableStateOf(TrFormat.amount(asset.amount)) }
+    // Ev/araba/BES: "Miktar" alanı TL değeri tutuyor, miktar hep 1.
+    val isManual = asset.assetType.isManual
+    var amount by remember(asset.id) {
+        mutableStateOf(
+            if (isManual) TrFormat.decimal(asset.currentPrice ?: 0.0) else TrFormat.amount(asset.amount)
+        )
+    }
     var cost by remember(asset.id) { mutableStateOf(TrFormat.decimal(asset.costBasis)) }
     var location by remember(asset.id) { mutableStateOf(asset.location) }
+    // Tür adıyla aynıysa isim verilmemiş demektir; alan boş açılsın.
+    var name by remember(asset.id) {
+        mutableStateOf(if (asset.name == asset.assetType.displayName) "" else asset.name)
+    }
     var confirmingDelete by remember { mutableStateOf(false) }
     var showingHistory by remember { mutableStateOf(false) }
 
-    val currentPrice = state.currentPrice
+    val currentPrice = if (isManual) amount.toDoubleOrNullTr() ?: asset.currentPrice
+    else state.currentPrice
     fun money(value: Double) = if (state.valuesMasked) TrFormat.MASK else TrFormat.money(value)
 
     Column(
@@ -113,8 +125,11 @@ fun AssetEditScreen(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = asset.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                     Text(
-                        text = state.marketPrice?.let { "Güncel: ${TrFormat.money(it)}" }
-                            ?: "Güncel fiyat alınamadı",
+                        text = when {
+                            isManual -> asset.assetType.displayName
+                            else -> state.marketPrice?.let { "Güncel: ${TrFormat.money(it)}" }
+                                ?: "Güncel fiyat alınamadı"
+                        },
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -124,11 +139,19 @@ fun AssetEditScreen(
             OutlinedTextField(
                 value = amount,
                 onValueChange = { amount = it },
-                label = { Text("Miktar (${asset.unit})") },
+                label = { Text(if (isManual) "Güncel Değer (₺)" else "Miktar (${asset.unit})") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            if (isManual) {
+                ManualNameField(
+                    name = name,
+                    onNameChange = { name = it },
+                    example = asset.assetType.manualNameExample
+                )
+            }
 
             if (!state.isTRY) {
                 OutlinedTextField(
@@ -137,8 +160,11 @@ fun AssetEditScreen(
                     // Hisse/kripto/fon "maliyet", altın/döviz "kur" — iOS ile aynı.
                     label = {
                         Text(
-                            if (asset.category.isDynamic) "Ortalama Maliyet (₺)"
-                            else "Ortalama Alış Kuru (₺)"
+                            when {
+                                isManual -> "${asset.assetType.manualCostLabel} (₺)"
+                                asset.category.isDynamic -> "Ortalama Maliyet (₺)"
+                                else -> "Ortalama Alış Kuru (₺)"
+                            }
                         )
                     },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -147,14 +173,16 @@ fun AssetEditScreen(
                 )
             }
 
-            LocationPicker(
-                location = location,
-                onLocationChange = { location = it },
-                suggestions = asset.category.locationSuggestions
-            )
+            if (!isManual) {
+                LocationPicker(
+                    location = location,
+                    onLocationChange = { location = it },
+                    suggestions = asset.category.locationSuggestions
+                )
+            }
 
             ValuePreview(
-                amount = amount.toDoubleOrNullTr() ?: 0.0,
+                amount = if (isManual) 1.0 else amount.toDoubleOrNullTr() ?: 0.0,
                 cost = cost.toDoubleOrNullTr() ?: asset.costBasis,
                 currentPrice = currentPrice,
                 showProfitLoss = !state.isTRY,
@@ -205,7 +233,7 @@ fun AssetEditScreen(
 
         // Küçük ekranda / klavye açıkken Kaydet kaydırmanın dibinde kaybolmasın.
         Button(
-            onClick = { viewModel.save(amount, cost, location) },
+            onClick = { viewModel.save(amount, cost, location, name) },
             enabled = (amount.toDoubleOrNullTr() ?: 0.0) > 0,
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier

@@ -52,7 +52,7 @@ class SnapshotWorker @AssistedInject constructor(
 
             // Varlık başına günlük fiyat anlık görüntüsü.
             val priced = assets.map { asset ->
-                val price = market.tryPrice(asset.symbol)
+                val price = market.priceOf(asset)
                 if (price != null) history.recordPrice(asset.symbol, today, price, asset.amount)
                 asset.copy(currentPrice = price ?: asset.currentPrice)
             }

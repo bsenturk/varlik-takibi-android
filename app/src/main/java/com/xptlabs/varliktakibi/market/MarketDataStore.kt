@@ -4,6 +4,8 @@ import android.util.Log
 import com.xptlabs.varliktakibi.core.ext.parseTimestampOrNull
 import com.xptlabs.varliktakibi.core.model.AssetCategory
 import com.xptlabs.varliktakibi.core.model.AssetType
+import com.xptlabs.varliktakibi.data.local.entity.AssetEntity
+import com.xptlabs.varliktakibi.data.local.entity.assetType
 import com.xptlabs.varliktakibi.data.remote.AssetPrice
 import com.xptlabs.varliktakibi.data.remote.MarketDataService
 import kotlinx.coroutines.CoroutineScope
@@ -154,8 +156,35 @@ class MarketDataStore @Inject constructor(
             .sortedBy { it.name.lowercase() }
     }
 
-    fun instruments(category: AssetCategory): List<Instrument> =
-        if (category.isDynamic) dynamicInstruments(category) else staticInstruments(category)
+    fun instruments(category: AssetCategory): List<Instrument> = when {
+        category.isDynamic -> dynamicInstruments(category)
+        category.isManual -> manualInstruments(category)
+        else -> staticInstruments(category)
+    }
+
+    /**
+     * Elle girilen türler (ev, araba, BES…): fiyatı yok, değeri kullanıcı giriyor.
+     * Sembol yer tutucu — kayıtta varlığa özel `MANUAL-<id>` ile değiştiriliyor.
+     */
+    private fun manualInstruments(category: AssetCategory): List<Instrument> =
+        category.assetTypes.map { type ->
+            Instrument(
+                symbol = type.id,
+                name = type.displayName,
+                priceTry = 0.0,
+                changePercent = null,
+                category = category,
+                type = type,
+                unit = type.unit
+            )
+        }
+
+    /**
+     * Varlığın güncel TL birim fiyatı: elle girilende kullanıcının son girdiği
+     * değer (piyasada karşılığı yok), diğerlerinde canlı fiyat.
+     */
+    fun priceOf(asset: AssetEntity): Double? =
+        if (asset.assetType.isManual) asset.currentPrice else tryPrice(asset.symbol)
 
     /**
      * Okunabilir enstrüman adı: BIST'te ".IS" son eki atılır, kriptoda

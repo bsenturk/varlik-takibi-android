@@ -1,7 +1,9 @@
 package com.xptlabs.varliktakibi.data.repo
 
 import com.xptlabs.varliktakibi.data.local.dao.AssetDao
+import com.xptlabs.varliktakibi.core.model.AssetType
 import com.xptlabs.varliktakibi.data.local.entity.AssetEntity
+import com.xptlabs.varliktakibi.data.local.entity.assetType
 import com.xptlabs.varliktakibi.data.local.entity.TransactionType
 import com.xptlabs.varliktakibi.history.HistoryRecorder
 import com.xptlabs.varliktakibi.market.Instrument
@@ -82,6 +84,60 @@ class AssetEditor @Inject constructor(
     }
 
     /**
+     * Elle değer girilen varlık (ev, araba, BES…) ekler. Temsil: miktar hep 1,
+     * fiyat = girilen değer — toplam, kâr/zarar ve kategori toplamı mevcut
+     * hesapla çalışıyor. Her biri kendine özel sembol taşıyor ve hiç
+     * birleştirilmiyor: her ev ayrı bir varlık.
+     *
+     * @param cost opsiyonel alış fiyatı / yatırılan tutar; yoksa değer (kâr/zarar 0).
+     */
+    suspend fun addManual(
+        type: AssetType,
+        portfolioId: String,
+        value: Double,
+        cost: Double?,
+        name: String
+    ) {
+        require(type.isManual) { "Elle girilen tür değil" }
+        require(value > 0) { "Değer sıfırdan büyük olmalı" }
+
+        val id = java.util.UUID.randomUUID().toString()
+        val costBasis = cost?.takeIf { it > 0 } ?: value
+        val asset = AssetEntity(
+            id = id,
+            portfolioId = portfolioId,
+            type = type.id,
+            symbol = AssetType.manualSymbol(id),
+            name = name.trim().take(MAX_NAME_LENGTH).ifEmpty { type.displayName },
+            unit = type.unit,
+            amount = 1.0,
+            costBasis = costBasis,
+            currentPrice = value
+        )
+        assetDao.insert(asset)
+        history.recordInitial(asset, costBasis, snapshotPrice = value)
+    }
+
+    /**
+     * Elle girilen varlığın değerini ve adını günceller. Değer geçmişine bugünün
+     * noktası yazılır; işlem geçmişinde "Güncelleme" olarak görünür.
+     */
+    suspend fun setManualValue(asset: AssetEntity, value: Double, name: String) {
+        require(value > 0) { "Değer sıfırdan büyük olmalı" }
+        val type = asset.assetType
+        val updated = asset.copy(
+            currentPrice = value,
+            name = name.trim().take(MAX_NAME_LENGTH).ifEmpty { type.displayName },
+            lastUpdated = System.currentTimeMillis()
+        )
+        assetDao.update(updated)
+        if (value != asset.currentPrice) {
+            history.recordTransaction(updated, TransactionType.EDIT, delta = 0.0, price = value)
+        }
+        history.recordDailySnapshot(updated)
+    }
+
+    /**
      * Miktarı doğrudan ayarlar (düzenleme sayfası). Maliyet birim başına aynı
      * kalır — kullanıcı miktarı düzeltiyor, yeni alım yapmıyor.
      */
@@ -128,6 +184,7 @@ class AssetEditor @Inject constructor(
 
     companion object {
         const val MAX_LOCATION_LENGTH = 30
+        const val MAX_NAME_LENGTH = 40
 
         /** Karşılaştırma ve kayıt aynı temizlenmiş biçimi kullanıyor. */
         fun normalizedLocation(raw: String): String = raw.trim().take(MAX_LOCATION_LENGTH)

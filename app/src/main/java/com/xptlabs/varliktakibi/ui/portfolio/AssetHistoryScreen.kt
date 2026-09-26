@@ -72,6 +72,8 @@ fun AssetHistoryScreen(
     onClose: () -> Unit
 ) {
     fun money(value: Double) = if (valuesMasked) TrFormat.MASK else TrFormat.money(value)
+    /** Ev/araba gibi elle girilen varlık: miktar hep 1, anlamlı olan değer. */
+    val isManual = asset.assetType.isManual
 
     Column(
         modifier = Modifier
@@ -99,7 +101,8 @@ fun AssetHistoryScreen(
             SummaryCard(
                 asset = asset,
                 currentValue = money(asset.amount * currentPrice),
-                currentPrice = if (isTRY) null else TrFormat.money(currentPrice),
+                // Elle girilende fiyat = değer; aynı sayıyı iki kez yazmayalım.
+                currentPrice = if (isTRY || isManual) null else TrFormat.money(currentPrice),
                 firstAdded = transactions.lastOrNull()?.let { formatDate(it.date) } ?: "—"
             )
 
@@ -134,9 +137,10 @@ fun AssetHistoryScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    if (!isTRY) {
+                    if (isManual || !isTRY) {
                         Text(
-                            "Bugünkü değerler güncel fiyattan hesaplanır.",
+                            if (isManual) "Bugünkü değer, en son girdiğin değerdir."
+                            else "Bugünkü değerler güncel fiyattan hesaplanır.",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -154,6 +158,7 @@ fun AssetHistoryScreen(
                                 unit = asset.unit,
                                 currentPrice = currentPrice,
                                 isTRY = isTRY,
+                                isManual = isManual,
                                 money = ::money
                             )
                         }
@@ -188,7 +193,8 @@ private fun SummaryCard(
             Column {
                 Text(asset.name, fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                 Text(
-                    "${TrFormat.amount(asset.amount)} ${asset.unit}" +
+                    if (asset.assetType.isManual) asset.assetType.displayName
+                    else "${TrFormat.amount(asset.amount)} ${asset.unit}" +
                         if (asset.location.isEmpty()) "" else " · ${asset.location}",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -231,12 +237,16 @@ private fun TransactionRow(
     unit: String,
     currentPrice: Double,
     isTRY: Boolean,
+    isManual: Boolean,
     money: (Double) -> String
 ) {
     val (label, icon, tint) = txn.transactionType.style()
     val isBuy = txn.transactionType == TransactionType.INITIAL ||
         txn.transactionType == TransactionType.ADD
     val amountLine = when {
+        // Elle girilende "+1 adet" anlamsız: alımda değer satırı yeterli,
+        // güncellemede o gün girilen değer gösterilir.
+        isManual -> if (isBuy) "" else money(txn.price)
         // Sadece maliyet düzeltmesi: miktar değişmedi, toplamı göster.
         txn.transactionType == TransactionType.EDIT && txn.amount == 0.0 ->
             "Toplam ${TrFormat.amount(txn.totalAmount)} $unit"
@@ -274,7 +284,9 @@ private fun TransactionRow(
         }
         Spacer(Modifier.weight(1f))
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(amountLine, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            if (amountLine.isNotEmpty()) {
+                Text(amountLine, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            }
             val secondary = MaterialTheme.colorScheme.onSurfaceVariant
             when {
                 isBuy && txn.amount > 0 -> {

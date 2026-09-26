@@ -28,7 +28,7 @@ class AssetTypeTest {
     @Test
     fun `sabit turlerin sembolleri backend listesinde var`() {
         val missing = AssetType.entries
-            .filterNot { it.isDynamic }
+            .filterNot { it.isDynamic || it.isManual }
             // TRY'nin assets_prices'ta satırı yok; 1 TRY = 1 TRY olarak
             // MarketDataStore içinde özel olarak ele alınıyor.
             .filterNot { it == AssetType.TL }
@@ -46,7 +46,7 @@ class AssetTypeTest {
 
     @Test
     fun `her sembol tek bir ture ait`() {
-        val symbols = AssetType.entries.filterNot { it.isDynamic }.map { it.supabaseSymbol }
+        val symbols = AssetType.entries.filterNot { it.isDynamic || it.isManual }.map { it.supabaseSymbol }
         assertEquals("Sembol çakışması var", symbols.size, symbols.toSet().size)
     }
 
@@ -73,5 +73,19 @@ class AssetTypeTest {
         assertEquals("us_stock", AssetCategory.US_STOCK.backendAssetType)
         assertEquals("fund", AssetCategory.FUND.backendAssetType)
         assertEquals(null, AssetCategory.GOLD.backendAssetType)
+    }
+
+    @Test
+    fun `elle girilen turler piyasaya sorulmaz ve kendi kategorisinde`() {
+        val manual = AssetType.entries.filter { it.isManual }
+        assertEquals(setOf("house", "car", "land", "shop", "bes"), manual.map { it.id }.toSet())
+        manual.forEach { type ->
+            assertEquals("${type.name} sabit sembol taşımamalı", "", type.supabaseSymbol)
+            assertTrue(type.category.isManual)
+            assertTrue(!type.category.isPremium)
+        }
+        assertEquals(AssetCategory.BES, AssetType.BES.category)
+        assertEquals("Yatırdığın Tutar", AssetType.BES.manualCostLabel)
+        assertEquals("MANUAL-abc", AssetType.manualSymbol("abc"))
     }
 }

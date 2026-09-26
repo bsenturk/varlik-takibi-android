@@ -113,15 +113,23 @@ class AddAssetViewModel @Inject constructor(
         deepestStep = STEP_TYPE_LIST
         deepestCategory = category
         analytics.logAddAssetCategorySelected(category.name, source)
+        val instruments = market.instruments(category)
         _uiState.update {
             it.copy(
                 step = AddAssetStep.InstrumentList(category),
                 query = "",
-                instruments = market.instruments(category)
+                instruments = instruments
             )
         }
+        // Tek seçenekli kategoride (BES) tek satırlık bir liste göstermenin
+        // anlamı yok: doğrudan değer ekranına.
+        singleInstrument(category)?.let(::openInstrument)
         return true
     }
+
+    /** Kategorinin tek bir sabit türü varsa o (liste adımı atlanır). */
+    private fun singleInstrument(category: AssetCategory): Instrument? =
+        if (category.isManual) market.instruments(category).singleOrNull() else null
 
     fun openInstrument(instrument: Instrument) {
         deepestStep = STEP_AMOUNT
@@ -141,7 +149,13 @@ class AddAssetViewModel @Inject constructor(
             true
         }
         is AddAssetStep.Amount -> {
-            _uiState.update { it.copy(step = AddAssetStep.InstrumentList(step.instrument.category)) }
+            val category = step.instrument.category
+            _uiState.update {
+                it.copy(
+                    step = if (singleInstrument(category) != null) AddAssetStep.Category
+                    else AddAssetStep.InstrumentList(category)
+                )
+            }
             true
         }
     }
@@ -189,11 +203,19 @@ class AddAssetViewModel @Inject constructor(
         instrument: Instrument,
         amountText: String,
         purchasePriceText: String,
-        location: String
+        location: String,
+        /** Elle girilen varlığın ismi ("Kadıköy daire"); boşsa tür adı. */
+        name: String = ""
     ) {
+        val isManual = instrument.type.isManual
         val amount = amountText.toDoubleOrNullTr()
         if (amount == null || amount <= 0) {
-            _uiState.update { it.copy(errorMessage = "Lütfen geçerli bir miktar girin.") }
+            _uiState.update {
+                it.copy(
+                    errorMessage = if (isManual) "Lütfen geçerli bir değer girin."
+                    else "Lütfen geçerli bir miktar girin."
+                )
+            }
             return
         }
         val portfolio = _uiState.value.selectedPortfolio
@@ -205,7 +227,13 @@ class AddAssetViewModel @Inject constructor(
 
         viewModelScope.launch {
             runCatching {
-                editor.addOrMerge(instrument, portfolio.id, amount, cost, location)
+                if (isManual) {
+                    // Elle girilende alan TL değer: 1 adet × girilen değer.
+                    editor.addManual(instrument.type, portfolio.id, amount, cost, name)
+                    false
+                } else {
+                    editor.addOrMerge(instrument, portfolio.id, amount, cost, location)
+                }
             }.onSuccess { merged ->
                 analytics.logAssetAdded(
                     category = instrument.category.name,

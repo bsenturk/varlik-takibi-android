@@ -38,10 +38,20 @@ class HistoryRecorder @Inject constructor(
         if (existing == null) dao.trimPriceHistory(symbol, MAX_PRICE_HISTORY)
     }
 
-    /** Varlık ilk eklendiğinde: alış fiyatını çıpa olarak geçmişe yaz. */
-    suspend fun recordInitial(asset: AssetEntity, costPerUnit: Double) {
+    /**
+     * Varlık ilk eklendiğinde: alış fiyatını çıpa olarak geçmişe yaz.
+     *
+     * @param snapshotPrice fiyat geçmişine yazılacak ilk nokta. Elle girilen
+     *   varlıkta bu "değer" geçmişi — Analiz'in yeniden kurması onu okuyor;
+     *   ilk nokta alış fiyatı olursa bugün eksik değerlenirdi.
+     */
+    suspend fun recordInitial(
+        asset: AssetEntity,
+        costPerUnit: Double,
+        snapshotPrice: Double = costPerUnit
+    ) {
         val day = Days.startOf(asset.dateAdded)
-        recordPrice(asset.symbol, day, costPerUnit, asset.amount)
+        recordPrice(asset.symbol, day, snapshotPrice, asset.amount)
         dao.insertTransaction(
             TransactionHistoryEntity(
                 symbol = asset.symbol,

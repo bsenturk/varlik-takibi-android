@@ -2,6 +2,11 @@ package com.xptlabs.varliktakibi.core.model
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.BeachAccess
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material.icons.filled.CurrencyBitcoin
 import androidx.compose.material.icons.filled.Hive
 import androidx.compose.material.icons.filled.Payments
@@ -31,7 +36,12 @@ enum class AssetCategory(
     CRYPTO("Kripto", Icons.Filled.CurrencyBitcoin, "#F7931A"),
     BIST("Borsa İstanbul", Icons.AutoMirrored.Filled.ShowChart, "#E63946"),
     US_STOCK("ABD Borsası", Icons.Filled.AccountBalance, "#2A9D8F"),
-    FUND("Fon", Icons.Filled.PieChart, "#5856D6");
+    FUND("Fon", Icons.Filled.PieChart, "#5856D6"),
+    PHYSICAL("Fiziksel Varlık", Icons.Filled.Home, "#A2845E"),
+    BES("BES", Icons.Filled.BeachAccess, "#FF2D55");
+
+    /** Değeri piyasadan gelmeyen, kullanıcının TL olarak elle girdiği kategoriler. */
+    val isManual: Boolean get() = this == PHYSICAL || this == BES
 
     /**
      * Dinamik kategorilerin enstrümanları sabit değil, canlı `assets_prices`
@@ -46,6 +56,8 @@ enum class AssetCategory(
             CURRENCY -> listOf("Banka", "Nakit / Ev", "Kiralık Kasa")
             CRYPTO -> listOf("Kripto Borsası", "Soğuk Cüzdan", "Sıcak Cüzdan")
             BIST, US_STOCK, FUND -> listOf("Banka", "Aracı Kurum")
+            // Evin/arsanın kendisi zaten bir yer, BES'in yeri de şirketi.
+            PHYSICAL, BES -> emptyList()
         }
 
     /** Varlık Pro gerektiren kategoriler. */
@@ -58,7 +70,7 @@ enum class AssetCategory(
             BIST -> "bist"
             US_STOCK -> "us_stock"
             FUND -> "fund"
-            GOLD, SILVER, CURRENCY -> null
+            GOLD, SILVER, CURRENCY, PHYSICAL, BES -> null
         }
 
     /** Dinamik kategoride tutulan varlıkları etiketleyen jenerik tür. */
@@ -68,7 +80,7 @@ enum class AssetCategory(
             BIST -> AssetType.BIST_STOCK
             US_STOCK -> AssetType.US_STOCK
             FUND -> AssetType.FUND
-            GOLD, SILVER, CURRENCY -> null
+            GOLD, SILVER, CURRENCY, PHYSICAL, BES -> null
         }
 
     /** Bu kategoriye ait sabit türler, görüntüleme sırasıyla. Dinamiklerde boş. */
@@ -76,6 +88,18 @@ enum class AssetCategory(
         get() = if (isDynamic) emptyList()
         else AssetType.entries.filter { it.category == this }
 }
+
+/** Elle değer girilen türler de saf veri — döviz tablosuyla aynı desen. */
+data class ManualInfo(
+    val displayName: String,
+    val icon: ImageVector,
+    val tintHex: String,
+    val category: AssetCategory,
+    /** İsim alanının örnek metni. */
+    val nameExample: String,
+    /** Maliyet alanının etiketi — BES'te "alış" yok, yatırılan tutar var. */
+    val costLabel: String
+)
 
 /** Döviz kurları saf veri: her biri için ayrı `when` dalı yerine tek tablo. */
 data class FxInfo(
@@ -124,16 +148,31 @@ enum class AssetType(val id: String) {
     CRYPTO("crypto"),
     BIST_STOCK("bist_stock"),
     US_STOCK("us_stock"),
-    FUND("fund");
+    FUND("fund"),
+
+    // Elle değer girilen varlıklar. Her biri kendine özel bir `Asset.symbol`
+    // taşır (bkz. [manualSymbol]), piyasadan fiyat çekilmez.
+    HOUSE("house"),
+    CAR("car"),
+    LAND("land"),
+    SHOP("shop"),
+    BES("bes");
 
     val fx: FxInfo? get() = FX[this]
+
+    private val manual: ManualInfo? get() = MANUAL[this]
+
+    /** Değeri kullanıcının elle girdiği tür mü (piyasa fiyatı yok). */
+    val isManual: Boolean get() = manual != null
+    val manualNameExample: String get() = manual?.nameExample.orEmpty()
+    val manualCostLabel: String get() = manual?.costLabel ?: "Alış Fiyatı"
 
     /** Sembolle sürülen jenerik piyasa türü mü (kripto / hisse / fon)? */
     val isDynamic: Boolean
         get() = this == CRYPTO || this == BIST_STOCK || this == US_STOCK || this == FUND
 
     val displayName: String
-        get() = fx?.displayName ?: when (this) {
+        get() = fx?.displayName ?: manual?.displayName ?: when (this) {
             GOLD -> "Gram Altın"
             GOLD_QUARTER -> "Çeyrek Altın"
             GOLD_HALF -> "Yarım Altın"
@@ -170,7 +209,7 @@ enum class AssetType(val id: String) {
     val flag: String? get() = fx?.flag
 
     val icon: ImageVector
-        get() = when (this) {
+        get() = manual?.icon ?: when (this) {
             SILVER -> Icons.Filled.Workspaces
             CRYPTO -> Icons.Filled.CurrencyBitcoin
             BIST_STOCK -> Icons.AutoMirrored.Filled.ShowChart
@@ -180,7 +219,7 @@ enum class AssetType(val id: String) {
         }
 
     val tintHex: String
-        get() = fx?.tintHex ?: when (this) {
+        get() = fx?.tintHex ?: manual?.tintHex ?: when (this) {
             SILVER -> "#9E9E9E"
             CRYPTO -> "#F7931A"
             BIST_STOCK -> "#E63946"
@@ -211,12 +250,14 @@ enum class AssetType(val id: String) {
             GOLD_TWENTYTWO_BRACELET -> "22_AYAR_BILEZIK"
             SILVER -> "GRAM_GUMUS"
             CRYPTO, BIST_STOCK, US_STOCK, FUND -> ""
+            // Elle girilenlerin sabit sembolü yok — `Asset.symbol` varlığa özel.
+            HOUSE, CAR, LAND, SHOP, BES -> ""
             else -> id.uppercase()
         }
 
     /** "Genel" portföyde hangi üst kategoriye toplandığı. */
     val category: AssetCategory
-        get() = when {
+        get() = manual?.category ?: when {
             fx != null -> AssetCategory.CURRENCY
             this == SILVER -> AssetCategory.SILVER
             this == CRYPTO -> AssetCategory.CRYPTO
@@ -248,6 +289,26 @@ enum class AssetType(val id: String) {
             JPY to FxInfo("JPY", "Japon Yeni", "🇯🇵", "#E63946"),
             KWD to FxInfo("KWD", "Kuveyt Dinarı", "🇰🇼", "#6A994E")
         )
+
+        val MANUAL: Map<AssetType, ManualInfo> = mapOf(
+            HOUSE to ManualInfo("Ev", Icons.Filled.Home, "#A2845E", AssetCategory.PHYSICAL,
+                "Kadıköy'deki daire", "Alış Fiyatı"),
+            CAR to ManualInfo("Araba", Icons.Filled.DirectionsCar, "#5E5CE6", AssetCategory.PHYSICAL,
+                "Aile arabası", "Alış Fiyatı"),
+            LAND to ManualInfo("Arsa", Icons.Filled.Map, "#34C759", AssetCategory.PHYSICAL,
+                "Çeşme'deki arsa", "Alış Fiyatı"),
+            SHOP to ManualInfo("Dükkan", Icons.Filled.Storefront, "#FF9F0A", AssetCategory.PHYSICAL,
+                "Çarşıdaki dükkan", "Alış Fiyatı"),
+            BES to ManualInfo("BES", Icons.Filled.BeachAccess, "#FF2D55", AssetCategory.BES,
+                "Şirketin ya da planın adı", "Yatırdığın Tutar")
+        )
+
+        /**
+         * Elle girilen her varlığın kendine özel sembolü. Tür başına tek sembol
+         * olsaydı iki ev tek varlıkta birleşir, sembole göre tutulan fiyat
+         * geçmişleri birbirine karışırdı.
+         */
+        fun manualSymbol(assetId: String): String = "MANUAL-$assetId"
 
         fun fromId(id: String): AssetType? = entries.firstOrNull { it.id == id }
     }

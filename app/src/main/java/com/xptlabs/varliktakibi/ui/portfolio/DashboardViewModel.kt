@@ -181,7 +181,13 @@ class DashboardViewModel @Inject constructor(
                 AssetRowItem(
                     id = asset.id,
                     title = asset.name,
-                    subtitle = "${com.xptlabs.varliktakibi.core.format.TrFormat.amount(asset.amount)} ${asset.unit}",
+                    subtitle = when {
+                        // Elle girilende miktar hep 1; tür adı daha çok şey söylüyor.
+                        // İsim verilmemişse başlık zaten tür adı ("BES / BES" olmasın).
+                        type.isManual && asset.name == type.displayName -> "Elle girilen"
+                        type.isManual -> type.displayName
+                        else -> "${com.xptlabs.varliktakibi.core.format.TrFormat.amount(asset.amount)} ${asset.unit}"
+                    },
                     value = asset.totalValue,
                     changePercent = profitLossPercent(asset),
                     sparkline = sparks[asset.symbol].orEmpty(),
@@ -304,7 +310,7 @@ class DashboardViewModel @Inject constructor(
 
         var recorded = false
         assets.forEach { asset ->
-            val price = market.tryPrice(asset.symbol) ?: return@forEach
+            val price = market.priceOf(asset) ?: return@forEach
             history.recordPrice(asset.symbol, today, price, asset.amount)
             recorded = true
         }

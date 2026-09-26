@@ -87,6 +87,7 @@ import com.xptlabs.varliktakibi.ui.common.ScreenNavBar
 import com.xptlabs.varliktakibi.ui.common.AssetIconTile
 import com.xptlabs.varliktakibi.ui.common.DecimalInput
 import com.xptlabs.varliktakibi.ui.common.LocationPicker
+import com.xptlabs.varliktakibi.ui.common.ManualNameField
 import com.xptlabs.varliktakibi.ui.theme.AppColors
 
 /**
@@ -157,8 +158,8 @@ fun AddAssetScreen(
                 marketPrice = viewModel.marketPrice(step.instrument),
                 state = state,
                 onSelectPortfolio = viewModel::selectPortfolio,
-                onSave = { amount, price, location ->
-                    viewModel.save(step.instrument, amount, price, location)
+                onSave = { amount, price, location, name ->
+                    viewModel.save(step.instrument, amount, price, location, name)
                 }
             )
         }
@@ -243,7 +244,8 @@ private fun InstrumentList(
     onSelect: (Instrument) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        OutlinedTextField(
+        // Birkaç sabit seçenekte arama kutusu gürültü.
+        if (!category.isManual) OutlinedTextField(
             value = query,
             onValueChange = onQueryChange,
             placeholder = {
@@ -274,7 +276,13 @@ private fun InstrumentList(
         }
 
         LazyColumn(
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 24.dp),
+            // Arama kutusu yoksa liste üst çizgiye yapışmasın.
+            contentPadding = PaddingValues(
+                start = 18.dp,
+                end = 18.dp,
+                top = if (category.isManual) 12.dp else 0.dp,
+                bottom = 24.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(instruments, key = { it.symbol }) { instrument ->
@@ -312,9 +320,12 @@ private fun InstrumentRow(instrument: Instrument, onClick: () -> Unit) {
             modifier = Modifier.weight(1f)
         )
         Text(
-            text = TrFormat.money(instrument.priceTry),
+            text = if (instrument.type.isManual) "Değerini sen gir"
+            else TrFormat.money(instrument.priceTry),
             fontSize = 14.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = if (instrument.type.isManual) FontWeight.Normal else FontWeight.Bold,
+            color = if (instrument.type.isManual) MaterialTheme.colorScheme.onSurfaceVariant
+            else MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -354,16 +365,23 @@ private fun AmountEntry(
     marketPrice: Double,
     state: AddAssetUiState,
     onSelectPortfolio: (com.xptlabs.varliktakibi.data.local.entity.PortfolioEntity) -> Unit,
-    onSave: (amount: String, purchasePrice: String, location: String) -> Unit
+    onSave: (amount: String, purchasePrice: String, location: String, name: String) -> Unit
 ) {
     var amount by remember { mutableStateOf("") }
     var purchasePrice by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
+    var customName by remember { mutableStateOf("") }
+    // Ev/araba/BES: alan miktar değil, TL değer; miktar hep 1.
+    val isManual = instrument.type.isManual
     val focusManager = LocalFocusManager.current
     var anyFocused by remember { mutableStateOf(false) }
 
-    // Kriptoda 8 hane gerekiyor (0,00021 BTC), diğerlerinde 4 yeterli.
-    val amountDecimals = if (instrument.category == AssetCategory.CRYPTO) 8 else 4
+    // Kriptoda 8 hane gerekiyor (0,00021 BTC), tutarda 2, diğerlerinde 4.
+    val amountDecimals = when {
+        isManual -> 2
+        instrument.category == AssetCategory.CRYPTO -> 8
+        else -> 4
+    }
     val parsedAmount = amount.toDoubleOrNullTr() ?: 0.0
     val parsedCost = purchasePrice.toDoubleOrNullTr()
     val isTRY = instrument.symbol == "TRY"
@@ -399,10 +417,12 @@ private fun AmountEntry(
             }
 
             BigAmountField(
-                label = "Miktar",
+                label = if (isManual) "Güncel Değer" else "Miktar",
                 value = amount,
                 onValueChange = { amount = DecimalInput.sanitize(it, amountDecimals) },
-                suffix = instrument.unit
+                suffix = if (isManual) "₺" else instrument.unit,
+                // Büyük ham sayılar ("5000000") tek bakışta okunmuyor.
+                preview = if (isManual && parsedAmount > 0) TrFormat.money(parsedAmount) else null
             )
 
             PortfolioPicker(
@@ -411,14 +431,33 @@ private fun AmountEntry(
                 onSelect = onSelectPortfolio
             )
 
-            LocationPicker(
+            if (isManual) {
+                ManualNameField(
+                    name = customName,
+                    onNameChange = { customName = it },
+                    example = instrument.type.manualNameExample
+                )
+                PurchasePriceField(
+                    label = instrument.type.manualCostLabel,
+                    value = purchasePrice,
+                    onValueChange = { purchasePrice = DecimalInput.sanitize(it, 2) },
+                    placeholder = "Güncel değer",
+                    hint = "Belirtmezseniz kâr/zarar hesaplanmaz."
+                )
+                if (parsedAmount > 0 && parsedCost != null && parsedCost > 0) {
+                    ProfitLossPreview(
+                        value = parsedAmount - parsedCost,
+                        percent = (parsedAmount - parsedCost) / parsedCost * 100.0
+                    )
+                }
+            } else LocationPicker(
                 location = location,
                 onLocationChange = { location = it },
                 suggestions = instrument.category.locationSuggestions
             )
 
             // Türk Lirası'nın alış kuru yok (baz para birimi).
-            if (!isTRY) {
+            if (!isTRY && !isManual) {
                 PurchasePriceField(
                     label = if (instrument.category.isDynamic) "Ortalama Maliyet" else "Satın Alınan Kur",
                     value = purchasePrice,
@@ -467,7 +506,7 @@ private fun AmountEntry(
             GradientButton(
                 text = "Kaydet",
                 enabled = canSave,
-                onClick = { onSave(amount, purchasePrice, location) },
+                onClick = { onSave(amount, purchasePrice, location, customName) },
                 modifier = Modifier.weight(1f)
             )
         }

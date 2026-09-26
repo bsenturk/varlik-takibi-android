@@ -8,6 +8,7 @@ import com.xptlabs.varliktakibi.data.local.dao.SnapshotDao
 import com.xptlabs.varliktakibi.data.local.entity.AssetEntity
 import com.xptlabs.varliktakibi.data.local.entity.PortfolioEntity
 import com.xptlabs.varliktakibi.data.local.entity.PortfolioSnapshotEntity
+import com.xptlabs.varliktakibi.data.local.entity.assetType
 import com.xptlabs.varliktakibi.data.remote.MarketDataService
 import com.xptlabs.varliktakibi.data.repo.PortfolioRepository
 import java.time.Instant
@@ -56,12 +57,22 @@ class TimeMachine @Inject constructor(
         if (missing.isEmpty()) return
 
         // ── 3. Geçmiş fiyatları tek seferde çek ──────────────────────────────
+        // Elle girilen varlıkların (ev, araba…) piyasa fiyatı yok: sunucuya
+        // sorulmaz, değerleri kendi yerel günlük geçmişlerinden taşınır.
         val symbols = assets.map { it.symbol }.distinct()
         val series = priceSeries(
             symbols = symbols,
+            remoteSymbols = assets.filter { !it.assetType.isManual }.map { it.symbol }.distinct(),
             from = Instant.ofEpochMilli(missing.first()),
             to = Instant.ofEpochMilli(missing.last())
-        )
+        ).toMutableMap()
+        for (asset in assets) {
+            // Hiç geçmişi olmayan elle girilen varlık (yeni eklendi): bugünkü değer.
+            val value = asset.currentPrice ?: continue
+            if (asset.assetType.isManual && series[asset.symbol].isNullOrEmpty()) {
+                series[asset.symbol] = listOf(Days.startOf(asset.dateAdded) to value)
+            }
+        }
 
         // ── 2 + 4 + 5: her eksik günü oynat, değerle ve kaydet ───────────────
         val amountsByAsset = assets.associate { it.id to historicalAmounts(it) }
@@ -119,10 +130,11 @@ class TimeMachine @Inject constructor(
     /** sembol -> [(gün, fiyat)] artan sırada; ileri taşıma araması için. */
     private suspend fun priceSeries(
         symbols: List<String>,
+        remoteSymbols: List<String>,
         from: Instant,
         to: Instant
     ): Map<String, List<Pair<Long, Double>>> {
-        val remote = runCatching { marketData.fetchHistoricalPrices(symbols, from, to) }
+        val remote = runCatching { marketData.fetchHistoricalPrices(remoteSymbols, from, to) }
             .onFailure { Log.w(TAG, "Historical price fetch failed: ${it.message}") }
             .getOrDefault(emptyList())
 

@@ -6,6 +6,7 @@ import com.xptlabs.varliktakibi.analytics.FirebaseAnalyticsManager
 import com.xptlabs.varliktakibi.data.local.dao.AssetDao
 import com.xptlabs.varliktakibi.data.local.entity.AssetEntity
 import com.xptlabs.varliktakibi.data.local.entity.TransactionHistoryEntity
+import com.xptlabs.varliktakibi.data.local.entity.assetType
 import com.xptlabs.varliktakibi.data.local.entity.category
 import com.xptlabs.varliktakibi.data.prefs.AppPreferences
 import com.xptlabs.varliktakibi.data.repo.AssetEditor
@@ -59,24 +60,35 @@ class AssetEditViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 asset = asset,
-                marketPrice = asset?.let { a -> market.tryPrice(a.symbol) },
+                marketPrice = asset?.let { a -> market.priceOf(a) },
                 transactions = asset?.let { a -> history.transactions(a).asReversed() }.orEmpty(),
                 valuesMasked = asset != null && asset.portfolioId in prefs.maskedPortfolioIds.first()
             )
         }
     }
 
-    fun save(amountText: String, costText: String, location: String) {
+    /** @param amountText elle girilen varlıkta miktar değil, TL değer. */
+    fun save(amountText: String, costText: String, location: String, name: String) {
         val asset = _uiState.value.asset ?: return
+        val isManual = asset.assetType.isManual
         val amount = amountText.toDoubleOrNullTr()
         if (amount == null || amount <= 0) {
-            _uiState.update { it.copy(errorMessage = "Lütfen geçerli bir miktar girin.") }
+            _uiState.update {
+                it.copy(
+                    errorMessage = if (isManual) "Lütfen geçerli bir değer girin."
+                    else "Lütfen geçerli bir miktar girin."
+                )
+            }
             return
         }
         viewModelScope.launch {
             runCatching {
                 costText.toDoubleOrNullTr()?.takeIf { it > 0 }
                     ?.let { editor.setCostBasis(asset, it) }
+                if (isManual) {
+                    editor.setManualValue(assetDao.getById(asset.id) ?: asset, amount, name)
+                    return@runCatching
+                }
                 editor.setLocation(assetDao.getById(asset.id) ?: asset, location)
                 // Maliyet/yer güncellendiyse en taze satırla devam et.
                 val fresh = assetDao.getById(asset.id) ?: asset
