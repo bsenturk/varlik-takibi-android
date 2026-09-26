@@ -41,7 +41,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xptlabs.varliktakibi.data.local.entity.PortfolioEntity
 import com.xptlabs.varliktakibi.data.local.entity.color
 import com.xptlabs.varliktakibi.ui.common.AssetRow
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import com.xptlabs.varliktakibi.ui.common.BalanceCard
+import com.xptlabs.varliktakibi.ui.paywall.FeatureGatePaywall
 import com.xptlabs.varliktakibi.ui.common.DeleteConfirmDialog
 import com.xptlabs.varliktakibi.ui.common.PortfolioChip
 
@@ -58,6 +61,7 @@ fun DashboardScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     var editorMode by remember { mutableStateOf<PortfolioEditorMode?>(null) }
+    val haptics = LocalHapticFeedback.current
     var pendingDelete by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -89,7 +93,8 @@ fun DashboardScreen(
                             when {
                                 // Kilitli portföy seçilemez; veri duruyor,
                                 // erişim Pro'ya bağlı.
-                                isLocked -> onPortfolioLimitReached()
+                                isLocked -> if (FeatureGatePaywall.shouldShow()) onPortfolioLimitReached()
+                                else haptics.performHapticFeedback(HapticFeedbackType.LongPress)
 
                                 portfolio.id == state.selectedPortfolio?.id &&
                                     !portfolio.isGeneral ->
@@ -166,7 +171,10 @@ fun DashboardScreen(
                                 convert = { viewModel.convert(it, state.currency) },
                                 valuesMasked = state.valuesMasked,
                                 modifier = when {
-                                    row.isLocked -> Modifier.clickable { onLockedContent() }
+                                    row.isLocked -> Modifier.clickable {
+                                        if (FeatureGatePaywall.shouldShow()) onLockedContent()
+                                        else haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
                                     row.assetId != null ->
                                         Modifier.clickable { onEditAsset(row.assetId) }
                                     else -> Modifier

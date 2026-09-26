@@ -131,7 +131,7 @@ private fun MainContent(
             MainTab.ANALYSIS -> AnalysisScreen()
             MainTab.RATES -> RatesScreen()
             MainTab.SETTINGS -> SettingsScreen(
-                onOpenPaywall = { paywallContext = PaywallContext.GENERAL },
+                onOpenPaywall = { paywallContext = it },
                 onOpenFeedback = { showFeedback = true },
                 onOpenCurrency = { showCurrencyPicker = true }
             )

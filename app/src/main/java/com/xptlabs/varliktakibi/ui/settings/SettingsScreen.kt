@@ -1,5 +1,6 @@
 package com.xptlabs.varliktakibi.ui.settings
 
+import com.xptlabs.varliktakibi.ui.paywall.PaywallContext
 import androidx.activity.compose.LocalActivity
 import android.content.Intent
 import android.net.Uri
@@ -73,7 +74,7 @@ internal const val SUPPORT_EMAIL = "buraksenturktr@icloud.com"
 
 @Composable
 fun SettingsScreen(
-    onOpenPaywall: () -> Unit,
+    onOpenPaywall: (PaywallContext) -> Unit,
     onOpenFeedback: () -> Unit,
     onOpenCurrency: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
@@ -102,7 +103,7 @@ fun SettingsScreen(
         }
 
         if (!state.isPro) {
-            item { ProBanner(onClick = onOpenPaywall) }
+            item { ProBanner(onClick = { onOpenPaywall(PaywallContext.SETTINGS) }) }
         }
 
         item {
@@ -112,7 +113,9 @@ fun SettingsScreen(
                     tintHex = if (state.isPro) "#AF52DE" else "#8E8E93",
                     title = "Üyelik Durumu",
                     value = if (state.isPro) "Pro" else "Ücretsiz",
-                    onClick = if (state.isPro) null else onOpenPaywall
+                    onClick = if (state.isPro) null else {
+                        { onOpenPaywall(PaywallContext.MEMBERSHIP) }
+                    }
                 )
                 if (!state.isPro) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outline)

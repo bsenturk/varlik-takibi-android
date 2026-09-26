@@ -23,6 +23,18 @@ enum class PaywallContext(val key: String, val headline: String, val subtitle: S
         "Portföyünün\ntamamını gör.",
         "Sınırsız portföy, TEFAS fonları, ABD ETF'leri ve reklamsız bir deneyim."
     ),
+    // Ayarlar banner'ı ve üyelik satırı ayrı bağlamlar: eskiden ikisi de
+    // general'a düşüyordu, hangisinin dönüştüğü ölçülemiyordu. Metin bilerek aynı.
+    SETTINGS(
+        "settings",
+        "Portföyünün\ntamamını gör.",
+        "Sınırsız portföy, TEFAS fonları, ABD ETF'leri ve reklamsız bir deneyim."
+    ),
+    MEMBERSHIP(
+        "membership",
+        "Portföyünün\ntamamını gör.",
+        "Sınırsız portföy, TEFAS fonları, ABD ETF'leri ve reklamsız bir deneyim."
+    ),
     ONBOARDING(
         "onboarding",
         "Portföyünün\ntamamını gör.",
@@ -48,6 +60,27 @@ enum class PaywallContext(val key: String, val headline: String, val subtitle: S
         fun fromKey(key: String?): PaywallContext =
             entries.firstOrNull { it.key == key } ?: GENERAL
     }
+}
+
+/**
+ * Kilitli satır/çip dokunuşlarında paywall'a 15 dk frekans tavanı: kilitli
+ * içeriğe art arda dokunan kullanıcı her seferinde paywall'a düşmesin. Açık
+ * niyet beyanları ("+ portföy", fon kategorisi) kasten tavansız — yoksa
+ * kullanıcı geri bildirimsiz bir çıkmazda kalır.
+ */
+object FeatureGatePaywall {
+    private const val COOLDOWN_MS = 15 * 60 * 1000L
+    private var lastShown: Long? = null
+
+    /** true ise paywall açılır; false ise çağıran yalnızca "kilitli" hissi verir. */
+    fun shouldShow(now: Long = System.currentTimeMillis()): Boolean {
+        val last = lastShown
+        if (last != null && now - last < COOLDOWN_MS) return false
+        lastShown = now
+        return true
+    }
+
+    internal fun resetForTest() { lastShown = null }
 }
 
 data class PlanOption(
