@@ -32,6 +32,7 @@ import com.xptlabs.varliktakibi.ui.onboarding.OnboardingScreen
 import com.xptlabs.varliktakibi.ui.paywall.PaywallContext
 import com.xptlabs.varliktakibi.ui.paywall.PaywallScreen
 import com.xptlabs.varliktakibi.ui.portfolio.AssetEditScreen
+import com.xptlabs.varliktakibi.ui.settings.FeedbackScreen
 import com.xptlabs.varliktakibi.ui.portfolio.DashboardScreen
 import com.xptlabs.varliktakibi.ui.rates.RatesScreen
 import com.xptlabs.varliktakibi.ui.settings.SettingsScreen
@@ -83,6 +84,7 @@ private fun MainContent(
     var showAddAsset by remember { mutableStateOf(false) }
     var editingAssetId by remember { mutableStateOf<String?>(null) }
     var paywallContext by remember { mutableStateOf<PaywallContext?>(null) }
+    var showFeedback by remember { mutableStateOf(false) }
     // Ekleme akışının kapanışını olay olarak taşıyoruz: doğrudan `showAddAsset`
     // üzerinde LaunchedEffect kurmak ilk kompozisyonda da tetikleniyor ve
     // onboarding paywall bayrağını daha ekran açılmadan tüketiyordu.
@@ -126,7 +128,8 @@ private fun MainContent(
             MainTab.ANALYSIS -> AnalysisScreen()
             MainTab.RATES -> RatesScreen()
             MainTab.SETTINGS -> SettingsScreen(
-                onOpenPaywall = { paywallContext = PaywallContext.GENERAL }
+                onOpenPaywall = { paywallContext = PaywallContext.GENERAL },
+                onOpenFeedback = { showFeedback = true }
             )
         }
     }
@@ -171,6 +174,11 @@ private fun MainContent(
     editingAssetId?.let { assetId ->
         AssetEditScreen(assetId = assetId, onClose = { editingAssetId = null })
         BackHandler { editingAssetId = null }
+    }
+
+    if (showFeedback) {
+        FeedbackScreen(onClose = { showFeedback = false })
+        BackHandler { showFeedback = false }
     }
 
     paywallContext?.let { context ->

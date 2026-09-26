@@ -67,11 +67,12 @@ import com.xptlabs.varliktakibi.ui.theme.AppColors
 
 private const val PRIVACY_URL = "https://bsenturk.github.io/varliktakibi-legal/privacy.html"
 private const val TERMS_URL = "https://bsenturk.github.io/varliktakibi-legal/terms.html"
-private const val SUPPORT_EMAIL = "buraksenturktr@icloud.com"
+internal const val SUPPORT_EMAIL = "buraksenturktr@icloud.com"
 
 @Composable
 fun SettingsScreen(
     onOpenPaywall: () -> Unit,
+    onOpenFeedback: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -175,13 +176,7 @@ fun SettingsScreen(
                     icon = Icons.Filled.Mail,
                     tintHex = "#34C759",
                     title = "Bize Ulaşın",
-                    onClick = {
-                        context.startActivity(
-                            Intent(Intent.ACTION_SENDTO, "mailto:$SUPPORT_EMAIL".toUri()).apply {
-                                putExtra(Intent.EXTRA_SUBJECT, "Varlık Takibi geri bildirim")
-                            }
-                        )
-                    }
+                    onClick = onOpenFeedback
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                 SettingsRow(
