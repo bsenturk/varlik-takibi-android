@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -70,18 +72,24 @@ fun PaywallScreen(
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
     ) {
-        Row(modifier = Modifier.padding(12.dp)) {
+        // Dokunma hedefi 44dp, görünen daire 32dp.
+        Row(modifier = Modifier.padding(8.dp)) {
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
-                    .background(AppColors.subtleFill)
                     .clickable {
                         viewModel.onDismissed(context)
                         onClose()
                     },
                 contentAlignment = Alignment.Center
             ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(AppColors.subtleFill)
+                )
                 Icon(
                     Icons.Filled.Close,
                     contentDescription = "Kapat",
@@ -140,6 +148,18 @@ fun PaywallScreen(
                 }
             }
 
+        }
+
+        // Planlar ve satın alma butonu altta sabit: küçük ekranda kaydırmadan
+        // satın alma yolu kalmıyordu.
+        Column(
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 20.dp)
+                .padding(top = 12.dp, bottom = 8.dp)
+                .navigationBarsPadding(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             when {
                 state.isUnavailable -> Text(
                     text = "Abonelikler şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
@@ -154,31 +174,30 @@ fun PaywallScreen(
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 }
 
-                else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                else -> Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     state.plans.forEach { plan ->
                         PlanCard(
                             plan = plan,
                             isSelected = plan.pkg.identifier == state.selectedPlan?.pkg?.identifier,
-                            onClick = { viewModel.selectPlan(plan) }
+                            onClick = { viewModel.selectPlan(plan) },
+                            modifier = Modifier.weight(1f).fillMaxHeight()
                         )
                     }
                 }
             }
-        }
 
-        Column(
-            modifier = Modifier
-                .padding(24.dp)
-                .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
             Button(
                 onClick = { activity?.let(viewModel::purchase) },
                 enabled = state.selectedPlan != null && !state.isPurchasing && activity != null,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(54.dp)
+                    .height(56.dp)
             ) {
                 if (state.isPurchasing) {
                     CircularProgressIndicator(
@@ -187,11 +206,17 @@ fun PaywallScreen(
                         color = Color.White
                     )
                 } else {
+                    // Seçili planın fiyatı butonun içinde; ayrı özet satırı yok.
+                    val plan = state.selectedPlan
                     Text(
-                        text = if (state.selectedPlan?.hasTrial == true) "Ücretsiz Dene"
-                        else "Pro'ya Geç",
+                        text = when {
+                            plan == null -> "Pro'ya Geç"
+                            plan.hasTrial -> "Ücretsiz Dene"
+                            else -> "Tüm özellikleri aç · ${plan.price}/${plan.periodSuffix}"
+                        },
                         fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
                     )
                 }
             }
@@ -215,10 +240,14 @@ fun PaywallScreen(
 }
 
 @Composable
-private fun PlanCard(plan: PlanOption, isSelected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
+private fun PlanCard(
+    plan: PlanOption,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
             .clip(RoundedCornerShape(16.dp))
             .then(
                 if (isSelected) {
@@ -241,25 +270,21 @@ private fun PlanCard(plan: PlanOption, isSelected: Boolean, onClick: () -> Unit)
                 shape = RoundedCornerShape(16.dp)
             )
             .clickable(onClick = onClick)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = plan.label, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            if (plan.hasTrial) {
-                Text(
-                    text = "Deneme süresi dahil",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            Text(text = plan.price, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(text = plan.label, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = "${plan.price} / ${plan.periodSuffix}",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1
+        )
+        if (plan.hasTrial) {
             Text(
-                text = "/ ${plan.periodSuffix}",
+                text = "Deneme süresi dahil",
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
