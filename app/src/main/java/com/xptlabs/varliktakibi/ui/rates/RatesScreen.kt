@@ -174,16 +174,26 @@ private fun RateCard(instrument: Instrument) {
             logoUrl = instrument.logoUrl,
             size = 40.dp
         )
-        Text(
-            text = instrument.name,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
-        Column(horizontalAlignment = Alignment.End) {
+        val buy = instrument.buyPriceTry
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
+                text = instrument.name,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            // Kaynak makas yayımlıyorsa iki sütun (eskiden alış yerine de satış
+            // fiyatı yazılıyor, her kalemde sıfır makas görünüyordu).
+            if (buy != null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    PriceColumn("Alış", buy)
+                    PriceColumn("Satış", instrument.priceTry)
+                }
+            }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            if (buy == null) Text(
                 text = TrFormat.money(instrument.priceTry),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
@@ -197,5 +207,13 @@ private fun RateCard(instrument: Instrument) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PriceColumn(label: String, value: Double) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(TrFormat.money(value), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }

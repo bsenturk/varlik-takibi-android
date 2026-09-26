@@ -37,7 +37,13 @@ data class Instrument(
     val type: AssetType,
     val unit: String,
     val flag: String? = null,
-    val logoUrl: String? = null
+    val logoUrl: String? = null,
+    /**
+     * Alış fiyatı (TL). Yalnızca kaynak gerçek bir makas yayımlıyorsa dolu;
+     * satışa eşit/yüksekse null — aynı sayıyı iki sütuna yazmak olmayan bir
+     * makas uydurmak olurdu.
+     */
+    val buyPriceTry: Double? = null
 )
 
 /**
@@ -138,7 +144,10 @@ class MarketDataStore @Inject constructor(
                 category = category,
                 type = type,
                 unit = type.unit,
-                flag = type.flag
+                flag = type.flag,
+                buyPriceTry = _prices.value
+                    .firstOrNull { it.symbol == type.supabaseSymbol && it.currency == "TRY" }
+                    ?.buyPrice?.takeIf { it > 0 && it < price }
             )
         }
 

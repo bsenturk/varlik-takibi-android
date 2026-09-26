@@ -17,6 +17,11 @@ data class AssetPrice(
     @SerialName("asset_type") val assetType: String,
     val price: Double,
     @SerialName("change_percent") val changePercent: Double? = null,
+    /**
+     * Alış fiyatı — yalnızca altın/dövizde (Truncgil makas yayımlıyor); kripto,
+     * hisse ve fonda makas kavramı yok, null.
+     */
+    @SerialName("buy_price") val buyPrice: Double? = null,
     val source: String? = null,
     @SerialName("updated_at") val updatedAt: String,
     /** Enstrümanın logosu (kripto/hisse); Storage'daki kopya. Yoksa null. */
